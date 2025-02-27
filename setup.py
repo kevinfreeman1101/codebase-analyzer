@@ -1,14 +1,13 @@
-# setup.py
 from setuptools import setup, find_packages
 
 setup(
     name='codebase-analyzer',
-    version='0.1.0',
+    version='0.1',
     packages=find_packages(),
-    install_requires=['click>=8.1.7'],
+    install_requires=['click', 'radon', 'lizard'],
     entry_points={
         'console_scripts': [
-            'codebase-analyzer = codebase_analyzer.main:main'
-        ]
-    }
+            'codebase-analyzer = codebase_analyzer.main:main',
+        ],
+    },
 )

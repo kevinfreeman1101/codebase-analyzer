@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Any, Tuple, Union
+from typing import Dict, List, Optional, Set
 import os
+from ..models.data_classes import FileInfo
 
 class SummaryFormatter:
     """Formats codebase analysis results into a readable summary."""
@@ -61,7 +62,7 @@ class SummaryFormatter:
         """Count files by type."""
         type_counts = {}
         for info in self.source_files.values():
-            file_type = info.get('type', 'unknown')
+            file_type = info.type  # Access type attribute
             type_counts[file_type] = type_counts.get(file_type, 0) + 1
         return type_counts
 
@@ -124,7 +125,7 @@ class SummaryFormatter:
                 lines.extend(self._format_tree(child, prefix, is_last_child))
         return lines
 
-    def _format_function_groups(self, grouped_funcs: Dict[str, List[Tuple[str, Any]]], 
+    def _format_function_groups(self, grouped_funcs: Dict[str, List[tuple]], 
                               indent: str = "") -> List[str]:
         """Format grouped functions with proper indentation and documentation."""
         lines = []
@@ -132,7 +133,7 @@ class SummaryFormatter:
             lines.append(f"{indent}Public Functions:")
             for func_name, func_info in grouped_funcs['public']:
                 lines.append(f"{indent}  - {func_name}")
-                docstring = func_info.get('docstring', '')  # Access as dict
+                docstring = func_info.docstring  # Access docstring attribute
                 if docstring:
                     doc_lines = docstring.split('\n')
                     for line in doc_lines:
@@ -148,7 +149,7 @@ class SummaryFormatter:
             lines.append(f"{indent}Private Functions:")
             for func_name, func_info in grouped_funcs['private']:
                 lines.append(f"{indent}  - {func_name}")
-                docstring = func_info.get('docstring', '')  # Access as dict
+                docstring = func_info.docstring  # Access docstring attribute
                 if docstring:
                     doc_lines = docstring.split('\n')
                     for line in doc_lines:
@@ -159,7 +160,7 @@ class SummaryFormatter:
                                 lines.append(f"{indent}    {line.strip()}")
         return lines
 
-    def _group_functions(self, functions: Dict[str, Any]) -> Dict[str, List[Tuple[str, Any]]]:
+    def _group_functions(self, functions: Dict[str, FileInfo]) -> Dict[str, List[tuple]]:
         """Group functions by visibility (public/private)."""
         grouped = {'public': [], 'private': []}
         for func_name, func_info in sorted(functions.items()):
@@ -176,7 +177,7 @@ class SummaryFormatter:
         sections = ["Source Files", "------------"]
         by_type: Dict[str, List[tuple]] = {}
         for file_path, info in self.source_files.items():
-            file_type = info.get('type', 'unknown')
+            file_type = info.type  # Access type attribute
             if file_type not in by_type:
                 by_type[file_type] = []
             by_type[file_type].append((file_path, info))
@@ -186,28 +187,27 @@ class SummaryFormatter:
             sections.append(f"\n{display_name}:\n")
             for file_path, info in sorted(files):
                 sections.append(f"{file_path}")
-                if info.get('size'):
-                    sections.append(f"  Size: {self._get_size_str(info['size'])}")
+                sections.append(f"  Size: {self._get_size_str(info.size)}")  # Access size attribute
 
                 has_content = False
-                if info.get('classes'):
+                if info.classes:
                     has_content = True
-                    for class_name, class_info in sorted(info['classes'].items()):
+                    for class_name, class_info in sorted(info.classes.items()):
                         sections.append(f"  Class: {class_name}")
-                        if class_info['docstring']:
-                            sections.append(f"    {class_info['docstring']}")
-                        if class_info['attributes']:
+                        if class_info.docstring:
+                            sections.append(f"    {class_info.docstring}")
+                        if class_info.attributes:
                             sections.append("    Attributes:")
-                            for attr_info in sorted(class_info['attributes'], key=lambda x: x.get('name', '')):
+                            for attr_info in sorted(class_info.attributes, key=lambda x: x.get('name', '')):
                                 attr_name = attr_info.get('name', '')
                                 attr_type = f": {attr_info.get('type_annotation', '')}" if attr_info.get('type_annotation') else ""
                                 attr_doc = f" - {attr_info.get('docstring', '')}" if attr_info.get('docstring') else ""
                                 sections.append(f"      - {attr_name}{attr_type}{attr_doc}")
 
-                        if class_info['methods']:
+                        if class_info.methods:
                             sections.append("    Methods:")
-                            public_methods = [(m.name, m.docstring) for m in class_info['methods'] if not m.name.startswith('_') and m.name != '__init__']
-                            private_methods = [(m.name, m.docstring) for m in class_info['methods'] if m.name.startswith('_') and m.name != '__init__']
+                            public_methods = [(m.name, m.docstring) for m in class_info.methods if not m.name.startswith('_') and m.name != '__init__']
+                            private_methods = [(m.name, m.docstring) for m in class_info.methods if m.name.startswith('_') and m.name != '__init__']
                             if public_methods:
                                 sections.append("      Public:")
                                 for method_name, method_doc in sorted(public_methods):
@@ -223,14 +223,14 @@ class SummaryFormatter:
                                         method_str += f"\n          {method_doc}"
                                     sections.append(method_str)
 
-                if info.get('functions'):
+                if info.functions:
                     has_content = True
-                    grouped_funcs = self._group_functions(info['functions'])
+                    grouped_funcs = self._group_functions(info.functions)
                     sections.extend(self._format_function_groups(grouped_funcs, indent="  "))
 
                 if not has_content and file_type.lower() == 'python':
-                    if info.get('module_docstring'):
-                        sections.append(f"  {info['module_docstring']}")
+                    if info.content and info.content.strip().startswith('"""'):
+                        sections.append(f"  {info.content.strip().splitlines()[0]}")
                     else:
                         sections.append("  (Empty or initialization file)")
                 sections.append("")
@@ -273,12 +273,12 @@ class SummaryFormatter:
         if full_path.exists():
             self.total_size += os.path.getsize(full_path)
 
-    def add_dependency(self, category: str, dependency: str) -> None:
-        """Add a project dependency to the specified category."""
+    def add_dependency(self, category: str, dependencies: Set[str]) -> None:
+        """Add project dependencies to the specified category."""
         if category in self.dependencies:
-            self.dependencies[category].add(dependency)
+            self.dependencies[category].update(dependencies)
 
-    def add_source_file(self, file_path: str, info: Dict) -> None:
+    def add_source_file(self, file_path: str, info: FileInfo) -> None:
         """Add information about a source file."""
         self.source_files[file_path] = info
         self.total_files += 1
@@ -286,24 +286,22 @@ class SummaryFormatter:
         full_path = self.root_path / Path(file_path)
         if full_path.exists():
             size = os.path.getsize(full_path)
-            info['size'] = size
             self.total_size += size
+        else:
+            size = info.size  # Use size from FileInfo if file not found
 
-        file_type = info.get('type', 'unknown')
+        file_type = info.type
         self.file_counts[file_type] = self.file_counts.get(file_type, 0) + 1
 
         if file_type == 'python':
-            functions = info.get('functions', {})
-            self.function_count += len(functions)
-            self.documented_count += sum(1 for f in functions.values() if f.get('docstring'))
+            self.function_count += len(info.functions)
+            self.documented_count += sum(1 for f in info.functions.values() if f.docstring)
 
-            classes = info.get('classes', {})
-            if classes:
-                self.class_count += len(classes)
-                for class_info in classes.values():
-                    methods = class_info['methods']
-                    self.function_count += len(methods)
-                    self.documented_count += sum(1 for m in methods if m.docstring)
+            if info.classes:
+                self.class_count += len(info.classes)
+                for class_info in info.classes.values():
+                    self.function_count += len(class_info.methods)
+                    self.documented_count += sum(1 for m in class_info.methods if m.docstring)
 
         path_parts = file_path.split('/')
         current_dict = self.file_structure
@@ -313,13 +311,13 @@ class SummaryFormatter:
             current_dict = current_dict[part]
         current_dict[path_parts[-1]] = {
             'type': file_type,
-            'size': info.get('size', 0),
-            'functions': len(info.get('functions', {})),
-            'classes': len(info.get('classes', {}))
+            'size': size,
+            'functions': len(info.functions),
+            'classes': len(info.classes)
         }
 
-        if 'dependencies' in info:
-            self.dependencies['required'].update(info['dependencies'])
+        if info.dependencies:
+            self.add_dependency('required', info.dependencies)
 
     def format_summary(self) -> str:
         """Generate the complete codebase summary."""
