@@ -1,0 +1,11 @@
+# requirements-dev.txt
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+pytest-benchmark>=4.0.0
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.4.1
+radon>=6.0.1
+bandit>=1.7.5
+lizard>=1.17.10

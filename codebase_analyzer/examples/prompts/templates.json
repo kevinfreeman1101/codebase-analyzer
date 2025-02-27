@@ -1,0 +1,167 @@
+# codebase_analyzer/recommendations/prompts/templates.json
+{
+    "code_analysis": {
+        "system": "You are an expert code analyzer focusing on code quality, architecture, security, and performance. Analyze the provided code features and metrics to generate specific, actionable recommendations.",
+        "analysis_prompt": """
+Analyze the following code metrics and features to provide detailed recommendations:
+
+CODE METRICS:
+{metrics_json}
+
+CONTEXT:
+- Project type: {project_type}
+- Language: {language}
+- Framework: {framework}
+- Current issues: {current_issues}
+
+Generate recommendations following this structure:
+1. Category (one of: SECURITY, PERFORMANCE, QUALITY, ARCHITECTURE)
+2. Specific suggestion
+3. Detailed reasoning
+4. Confidence level (0.0-1.0)
+5. Relevant code snippets or patterns
+6. Alternative solutions
+7. Features considered in analysis
+
+Format your response as JSON following this schema:
+{
+    "recommendations": [
+        {
+            "category": "string",
+            "suggestion": "string",
+            "reasoning": "string",
+            "confidence": float,
+            "code_snippets": ["string"],
+            "alternative_solutions": ["string"],
+            "features_used": ["string"]
+        }
+    ]
+}
+""",
+        "security_focused": """
+Perform a security-focused analysis of the following code metrics:
+
+CODE METRICS:
+{metrics_json}
+
+Focus on:
+- Security vulnerabilities
+- Authentication/Authorization patterns
+- Data protection
+- Input validation
+- Security best practices
+
+Follow the same JSON response format as the main analysis.
+""",
+        "performance_focused": """
+Perform a performance-focused analysis of the following code metrics:
+
+CODE METRICS:
+{metrics_json}
+
+Focus on:
+- Performance bottlenecks
+- Resource usage
+- Caching opportunities
+- Optimization potential
+- Scalability concerns
+
+Follow the same JSON response format as the main analysis.
+""",
+        "quality_focused": """
+Perform a code quality analysis of the following metrics:
+
+CODE METRICS:
+{metrics_json}
+
+Focus on:
+- Code maintainability
+- Testing coverage
+- Documentation quality
+- Code organization
+- Best practices adherence
+
+Follow the same JSON response format as the main analysis.
+""",
+        "architecture_focused": """
+Perform an architecture-focused analysis of the following metrics:
+
+CODE METRICS:
+{metrics_json}
+
+Focus on:
+- Design patterns
+- Component coupling
+- Module organization
+- System architecture
+- Scalability considerations
+
+Follow the same JSON response format as the main analysis.
+"""
+    },
+    "feature_extraction": {
+        "complexity": """
+Analyze the following code for complexity-related features:
+
+CODE:
+{code}
+
+Extract and quantify:
+1. Cyclomatic complexity
+2. Cognitive complexity
+3. Method length
+4. Class coupling
+5. Inheritance depth
+
+Return as JSON with numerical values and explanations.
+""",
+        "patterns": """
+Analyze the following code for pattern-related features:
+
+CODE:
+{code}
+
+Identify:
+1. Design patterns used
+2. Anti-patterns present
+3. Architecture patterns
+4. Code organization patterns
+5. Testing patterns
+
+Return as JSON with pattern names and confidence levels.
+"""
+    },
+    "recommendation_refinement": """
+Review and refine the following recommendations:
+
+INITIAL RECOMMENDATIONS:
+{recommendations_json}
+
+PROJECT CONTEXT:
+{context_json}
+
+Improve by:
+1. Removing duplicates
+2. Merging similar suggestions
+3. Prioritizing by impact
+4. Adding implementation details
+5. Validating feasibility
+
+Return refined recommendations in the standard JSON format.
+""",
+    "explanation": """
+Explain the following recommendation in detail:
+
+RECOMMENDATION:
+{recommendation_json}
+
+Provide:
+1. Step-by-step implementation guide
+2. Potential challenges
+3. Expected benefits
+4. Alternative approaches
+5. Required resources
+
+Format as markdown with code examples where relevant.
+"""
+}
