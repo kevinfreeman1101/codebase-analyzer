@@ -1,4 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: codebase-analyzer
-Version: 0.1.0
-Requires-Dist: click>=8.1.7
+Version: 0.1
+Requires-Dist: click
+Requires-Dist: radon
+Requires-Dist: lizard

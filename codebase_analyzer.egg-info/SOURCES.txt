@@ -1,4 +1,5 @@
 README.md
+pyproject.toml
 setup.py
 codebase_analyzer/__init__.py
 codebase_analyzer/__main__.py
@@ -22,6 +23,9 @@ codebase_analyzer/features/manager.py
 codebase_analyzer/features/performance.py
 codebase_analyzer/features/quality.py
 codebase_analyzer/features/security.py
+codebase_analyzer/formatters/__init__.py
+codebase_analyzer/formatters/comprehensive_formatter.py
+codebase_analyzer/formatters/summary_formatter.py
 codebase_analyzer/metrics/__init__.py
 codebase_analyzer/metrics/complexity_analyzer.py
 codebase_analyzer/metrics/dependency_metrics.py
@@ -31,13 +35,19 @@ codebase_analyzer/metrics/quality_metrics.py
 codebase_analyzer/metrics/security_metrics.py
 codebase_analyzer/models/__init__.py
 codebase_analyzer/models/data_classes.py
+codebase_analyzer/recommendations/__init__.py
+codebase_analyzer/recommendations/ml_engine.py
+codebase_analyzer/recommendations/prompt_manager.py
+codebase_analyzer/recommendations/recommendation_engine.py
 codebase_analyzer/utils/__init__.py
 codebase_analyzer/utils/file_utils.py
 tests/__init__.py
 tests/conftest.py
 tests/helpers.py
 tests/integration/__init__.py
+tests/integration/test_integration.py
 tests/unit/__init__.py
 tests/unit/test_analyzers/__init__.py
+tests/unit/test_analyzers/test_codebase_analyzer.py
 tests/unit/test_analyzers/test_project_analyzer.py
 tests/unit/test_analyzers/test_python_analyzer.py

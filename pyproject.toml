@@ -1,0 +1,7 @@
+[project]
+name = "codebase-analyzer"
+version = "0.1"
+dependencies = ["click", "radon", "lizard"]
+
+[project.scripts]
+codebase-analyzer = "codebase_analyzer.main:main"

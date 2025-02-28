@@ -19,10 +19,9 @@ class PythonAnalyzer(BaseAnalyzer):
 
     def analyze(self) -> FileInfo:
         """Analyze the Python file and return FileInfo."""
-        try:
-            self.content = safe_read_file(self.file_path)
-        except IOError as e:
-            print(f"Skipping file due to error: {self.file_path} - {e}")
+        self.content = safe_read_file(self.file_path)
+        if self.content is None:
+            print(f"Error reading file: {self.file_path}")
             self.content = ""
 
         if self.content:
@@ -59,12 +58,12 @@ class PythonAnalyzer(BaseAnalyzer):
 
     def _calculate_complexity(self, node: ast.AST) -> int:
         """Calculate cyclomatic complexity of a node."""
-        complexity = 1  # Base complexity
+        complexity = 1
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.For, ast.While, ast.Try, ast.With)):
                 complexity += 1
             elif isinstance(child, ast.BoolOp):
-                complexity += len(child.values) - 1  # AND/OR increase complexity
+                complexity += len(child.values) - 1
         return complexity
 
     def _process_function(self, node: ast.FunctionDef) -> Optional[FunctionInfo]:
@@ -77,7 +76,7 @@ class PythonAnalyzer(BaseAnalyzer):
             returns = self._get_return_type(node)
             docstring = ast.get_docstring(node) or ""
             deps = self._get_dependencies(node)
-            loc = node.end_lineno - node.lineno + 1
+            loc = node.end_lineno - node.lineno + 1 if hasattr(node, 'end_lineno') else 1
             code_snippet = self._get_code_snippet(node)
             complexity = self._calculate_complexity(node)
 
@@ -163,7 +162,7 @@ class PythonAnalyzer(BaseAnalyzer):
             return CodeSnippet("", 0, 0)
 
         start_line = node.lineno - 1
-        end_line = node.end_lineno
+        end_line = node.end_lineno if hasattr(node, 'end_lineno') else node.lineno
         lines = self.content.split('\n')
         code_lines = lines[start_line:end_line]
         return CodeSnippet(
@@ -184,7 +183,7 @@ class PythonAnalyzer(BaseAnalyzer):
         for child in ast.walk(node):
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
                 deps.add(child.id)
-        return deps - self.imports  # Exclude imports themselves
+        return deps - self.imports
 
     def _process_import(self, node: ast.Import):
         """Process import statements."""
