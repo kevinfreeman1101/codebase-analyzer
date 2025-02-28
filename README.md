@@ -1,6 +1,10 @@
 # Codebase Analyzer
 
-A Python tool to analyze codebases, providing metrics on complexity, quality, dependencies, patterns, security, and performance.
+A Python tool to analyze Python codebases, providing metrics on complexity, quality, dependencies, patterns, security, and performance.
+Use this tool to:
+
+- Identify potential issues and improve the overall quality of your codebase.
+- Generate condensed code summaries for providing quick context to LLM code advisors (try this with Grok3 to supercharge your development speed!)
 
 ## Features
 - Comprehensive analysis of Python projects
