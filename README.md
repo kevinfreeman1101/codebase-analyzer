@@ -20,6 +20,10 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
+## Example Output
+
+See an example output for this project's code in summaries/summary.md
+
 ## Usage
 
 ```python
