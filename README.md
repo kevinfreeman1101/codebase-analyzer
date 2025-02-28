@@ -7,12 +7,14 @@ Use this tool to:
 - Generate condensed code summaries for providing quick context to LLM code advisors (try this with Grok3 to supercharge your development speed!)
 
 ## Features
+
 - Comprehensive analysis of Python projects
 - Metrics include cyclomatic complexity, maintainability, security vulnerabilities, and performance hotspots
 - Detailed summaries with actionable recommendations
 - Extensible architecture for adding new analyzers
 
 ## Installation
+
 ```bash
 pip install -r requirements.txt
 python setup.py install
@@ -45,4 +47,3 @@ pytest tests/
 - Fork the repository
 - Submit pull requests to the main branch
 - Ensure tests pass (pytest tests/)
-
