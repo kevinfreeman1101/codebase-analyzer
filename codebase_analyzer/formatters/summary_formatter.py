@@ -4,13 +4,13 @@ import os
 from ..models.data_classes import FileInfo
 
 class SummaryFormatter:
-    """Formats codebase analysis results into a readable summary."""
+    """Formats codebase analysis results into a readable summary for LLM understanding."""
 
     def __init__(self, root_path: Path):
-        """Initialize the SummaryFormatter.
+        """Initialize the SummaryFormatter with project root.
 
         Args:
-            root_path: Path to the project root directory
+            root_path: Path to the project root directory.
         """
         self.root_path = root_path
         self.source_files = {}
@@ -26,6 +26,7 @@ class SummaryFormatter:
             'standard': set(),
             'development': set()
         }
+        self.dependency_health = {'outdated': '', 'vulnerabilities': ''}  # Track dependency health
         self.project_overview = {
             'name': self.root_path.name,
             'description': '',
@@ -47,7 +48,7 @@ class SummaryFormatter:
         }
 
     def _get_size_str(self, size_in_bytes: int) -> str:
-        """Convert bytes to human readable string."""
+        """Convert bytes to human-readable string."""
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size_in_bytes < 1024:
                 return f"{size_in_bytes:.1f} {unit}"
@@ -59,7 +60,7 @@ class SummaryFormatter:
         return round((part / total) * 100) if total > 0 else 0
 
     def _get_file_type_counts(self) -> Dict[str, int]:
-        """Count files by type."""
+        """Count files by type for summary statistics."""
         type_counts = {}
         for info in self.source_files.values():
             file_type = info.type
@@ -67,7 +68,7 @@ class SummaryFormatter:
         return type_counts
 
     def _format_project_overview(self) -> List[str]:
-        """Format the project overview section."""
+        """Format the project overview section with metadata."""
         sections = [
             "Project Overview",
             "--------------",
@@ -84,7 +85,7 @@ class SummaryFormatter:
         return sections
 
     def _format_summary_statistics(self) -> List[str]:
-        """Format the summary statistics section."""
+        """Format the summary statistics section with file metrics."""
         dir_count = sum(1 for path in self.root_path.rglob("*") 
                        if path.is_dir() 
                        and not any(part.startswith(('.', '__pycache__', '*.egg-info')) 
@@ -107,7 +108,7 @@ class SummaryFormatter:
         return metrics
 
     def _format_tree(self, path: Path, prefix: str = "", is_last: bool = True) -> List[str]:
-        """Generate hierarchical tree structure."""
+        """Generate hierarchical tree structure for directory layout."""
         lines = []
         if any(part.startswith('.') for part in path.parts) or \
            any(part.startswith('__pycache__') for part in path.parts):
@@ -158,7 +159,7 @@ class SummaryFormatter:
         return lines
 
     def _group_functions(self, functions: Dict[str, 'FunctionInfo']) -> Dict[str, List[tuple]]:
-        """Group functions by visibility (public/private)."""
+        """Group functions by visibility (public/private) for clarity."""
         grouped = {'public': [], 'private': []}
         for func_name, func_info in sorted(functions.items()):
             if func_name == '__init__':
@@ -170,7 +171,7 @@ class SummaryFormatter:
         return grouped
 
     def _format_source_files(self) -> List[str]:
-        """Format the source files section."""
+        """Format the source files section with detailed code info."""
         sections = ["Source Files", "------------"]
         by_type: Dict[str, List[tuple]] = {}
         for file_path, info in self.source_files.items():
@@ -186,7 +187,6 @@ class SummaryFormatter:
                 sections.append(f"{file_path}")
                 sections.append(f"  Size: {self._get_size_str(info.size)}")
 
-                # Always include functions and classes if present
                 if info.functions:
                     grouped_funcs = self._group_functions(info.functions)
                     sections.extend(self._format_function_groups(grouped_funcs, indent="  "))
@@ -230,20 +230,28 @@ class SummaryFormatter:
         return sections
 
     def _format_dependencies(self) -> List[str]:
-        """Format the dependencies section."""
+        """Format the dependencies and health section for dependency analysis."""
         sections = ["Dependencies", "------------"]
         if self.dependencies['required']:
             sections.extend(["\nRequired:", *[f"- {dep}" for dep in sorted(self.dependencies['required'])]])
         if self.dependencies['development']:
             sections.extend(["\nDevelopment:", *[f"- {dep}" for dep in sorted(self.dependencies['development'])]])
-        return sections if any(deps for deps in self.dependencies.values()) else []
+        sections.extend([
+            "\nDependency Health",
+            "----------------",
+            "Outdated Packages:",
+            self.dependency_health['outdated'],
+            "\nVulnerabilities:",
+            self.dependency_health['vulnerabilities']
+        ])
+        return sections if any(deps for deps in self.dependencies.values()) or self.dependency_health else []
 
     def _format_build_artifacts(self) -> List[str]:
         """Format the build artifacts section."""
         return ["Build Artifacts", "--------------", *[f"- {artifact}" for artifact in sorted(self.build_artifacts)]] if self.build_artifacts else []
 
     def update_project_overview(self, info: Dict) -> None:
-        """Update project overview information."""
+        """Update project overview information with metadata."""
         if info:
             self.project_overview.update({
                 k: v for k, v in info.items() 
@@ -259,7 +267,7 @@ class SummaryFormatter:
         self.project_overview['description'] = overview
 
     def add_build_artifact(self, file_path: str) -> None:
-        """Add a build artifact file."""
+        """Add a build artifact file to the summary."""
         self.build_artifacts.add(file_path)
         self.total_files += 1
         full_path = self.root_path / file_path
@@ -271,8 +279,12 @@ class SummaryFormatter:
         if category in self.dependencies:
             self.dependencies[category].update(dependencies)
 
+    def add_dependency_health(self, health: Dict[str, str]) -> None:
+        """Add dependency health information to the summary."""
+        self.dependency_health.update(health)
+
     def add_source_file(self, file_path: str, info: FileInfo) -> None:
-        """Add information about a source file."""
+        """Add information about a source file to the summary."""
         self.source_files[file_path] = info
         self.total_files += 1
 
@@ -312,7 +324,7 @@ class SummaryFormatter:
             self.add_dependency('required', info.dependencies)
 
     def format_summary(self) -> str:
-        """Generate the complete codebase summary."""
+        """Generate the complete codebase summary with all sections."""
         sections = [
             "CODEBASE SUMMARY",
             "===============",

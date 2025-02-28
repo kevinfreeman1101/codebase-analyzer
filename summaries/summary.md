@@ -1,17 +1,17 @@
 Codebase Analysis Summary
 =========================
 Project Path: .
-Analysis Timestamp: 2025-02-27 20:14:57.463982
+Analysis Timestamp: 2025-02-27 23:22:34.267775
 Total Files: 97
-Total Lines: 12683
+Total Lines: 12789
 
 Complexity Metrics
-  Cyclomatic Complexity: 1121
-  Maintainability Index: 68.5
+  Cyclomatic Complexity: 1124
+  Maintainability Index: 68.4
 
 Quality Metrics
-  Type Hint Coverage: 34.2%
-  Documentation Coverage: 36.4%
+  Type Hint Coverage: 34.5%
+  Documentation Coverage: 37.3%
 
 Dependency Metrics
   Direct Dependencies: 17
@@ -26,7 +26,7 @@ Security Metrics
 Performance Metrics
   Hotspots Identified: 28
 
-Overall Project Score: 42.5/100
+Overall Project Score: 42.6/100
 
 Recommendations
 ---------------
@@ -45,7 +45,7 @@ Recommendations
 [MEDIUM] Dependencies: Dependency health score below threshold
   Suggestion: Review dependency versions and security advisories
 [MEDIUM] Performance: Found 28 performance hotspots
-  Suggestion: Optimize identified hotspots: codebase_analyzer/formatters/summary_formatter.py:133, codebase_analyzer/formatters/summary_formatter.py:148, codebase_analyzer/formatters/summary_formatter.py:182, codebase_analyzer/formatters/summary_formatter.py:185, codebase_analyzer/formatters/summary_formatter.py:194, codebase_analyzer/metrics/pattern_metrics.py:86, codebase_analyzer/metrics/pattern_metrics.py:195, codebase_analyzer/metrics/pattern_metrics.py:259, codebase_analyzer/analyzers/project_analyzer.py:32, codebase_analyzer/analyzers/project_analyzer.py:95, codebase_analyzer/analyzers/project_analyzer.py:115, codebase_analyzer/analyzers/python_analyzer.py:49, codebase_analyzer/analyzers/python_analyzer.py:104, codebase_analyzer/features/manager.py:187, build/lib/codebase_analyzer/formatters/summary_formatter.py:133, build/lib/codebase_analyzer/formatters/summary_formatter.py:148, build/lib/codebase_analyzer/formatters/summary_formatter.py:182, build/lib/codebase_analyzer/formatters/summary_formatter.py:185, build/lib/codebase_analyzer/formatters/summary_formatter.py:194, build/lib/codebase_analyzer/metrics/pattern_metrics.py:86, build/lib/codebase_analyzer/metrics/pattern_metrics.py:195, build/lib/codebase_analyzer/metrics/pattern_metrics.py:259, build/lib/codebase_analyzer/analyzers/project_analyzer.py:32, build/lib/codebase_analyzer/analyzers/project_analyzer.py:95, build/lib/codebase_analyzer/analyzers/project_analyzer.py:115, build/lib/codebase_analyzer/analyzers/python_analyzer.py:50, build/lib/codebase_analyzer/analyzers/python_analyzer.py:105, build/lib/codebase_analyzer/features/manager.py:187
+  Suggestion: Optimize identified hotspots: codebase_analyzer/formatters/summary_formatter.py:134, codebase_analyzer/formatters/summary_formatter.py:149, codebase_analyzer/formatters/summary_formatter.py:183, codebase_analyzer/formatters/summary_formatter.py:186, codebase_analyzer/formatters/summary_formatter.py:194, codebase_analyzer/metrics/pattern_metrics.py:86, codebase_analyzer/metrics/pattern_metrics.py:195, codebase_analyzer/metrics/pattern_metrics.py:259, codebase_analyzer/analyzers/project_analyzer.py:37, codebase_analyzer/analyzers/project_analyzer.py:105, codebase_analyzer/analyzers/project_analyzer.py:124, codebase_analyzer/analyzers/python_analyzer.py:56, codebase_analyzer/analyzers/python_analyzer.py:112, codebase_analyzer/features/manager.py:187, build/lib/codebase_analyzer/formatters/summary_formatter.py:133, build/lib/codebase_analyzer/formatters/summary_formatter.py:148, build/lib/codebase_analyzer/formatters/summary_formatter.py:182, build/lib/codebase_analyzer/formatters/summary_formatter.py:185, build/lib/codebase_analyzer/formatters/summary_formatter.py:194, build/lib/codebase_analyzer/metrics/pattern_metrics.py:86, build/lib/codebase_analyzer/metrics/pattern_metrics.py:195, build/lib/codebase_analyzer/metrics/pattern_metrics.py:259, build/lib/codebase_analyzer/analyzers/project_analyzer.py:32, build/lib/codebase_analyzer/analyzers/project_analyzer.py:95, build/lib/codebase_analyzer/analyzers/project_analyzer.py:115, build/lib/codebase_analyzer/analyzers/python_analyzer.py:50, build/lib/codebase_analyzer/analyzers/python_analyzer.py:105, build/lib/codebase_analyzer/features/manager.py:187
 [LOW] Performance: Found 27 loop optimization opportunities
   Suggestion: Apply suggestions: Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension, Replace with list comprehension
 [MEDIUM] Performance: Low performance score detected

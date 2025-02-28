@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from codebase_analyzer.analyzers.python_analyzer import PythonAnalyzer, FileInfo
+from codebase_analyzer.analyzers.python_analyzer import PythonAnalyzer
+from codebase_analyzer.models.data_classes import FileInfo
 from tests.helpers import TestHelper
 
 class TestPythonAnalyzer:
@@ -63,4 +64,26 @@ import sys as system
         assert isinstance(result, FileInfo)
         assert "os" in result.dependencies
         assert "datetime.datetime" in result.dependencies
-        assert "sys" in result.dependencies  # Fixed to check module name, not alias
+        assert "sys" in result.dependencies  # Checks module name, not alias
+
+    def test_basic_analysis(self):
+        """Test basic Python file analysis functionality."""
+        content = 'def foo():\n    """Return a string."""\n    return "bar"'
+        temp_file = self.helper.create_temp_file(content)
+        analyzer = PythonAnalyzer(temp_file)
+        result = analyzer.analyze()
+        assert isinstance(result, FileInfo), "Result should be a FileInfo object"
+        assert "foo" in result.functions, "Function 'foo' should be detected"
+        assert result.functions["foo"].name == "foo", "Function name should match"
+        assert result.functions["foo"].docstring == "Return a string.", "Docstring should be extracted"
+        assert result.functions["foo"].returns == "", "No return annotation expected"
+        assert result.size == len('def foo():\n    """Return a string."""\n    return "bar"'), "Size should match content length"
+
+    def test_unused_imports(self):
+        """Test detection of unused imports."""
+        content = 'import os\ndef foo():\n    return "bar"'
+        temp_file = self.helper.create_temp_file(content)
+        analyzer = PythonAnalyzer(temp_file)
+        result = analyzer.analyze()
+        assert "os" in result.unused_imports, "Unused import 'os' should be detected"
+        assert "foo" in result.functions, "Function 'foo' should still be analyzed"

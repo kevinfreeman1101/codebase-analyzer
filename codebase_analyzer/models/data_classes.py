@@ -1,16 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from pathlib import Path
 
 @dataclass
 class CodeSnippet:
+    """Represents a snippet of code extracted from a file."""
     content: str
     start_line: int
     end_line: int
 
 @dataclass
 class FunctionInfo:
+    """Detailed information about a function in the codebase."""
     name: str
     params: List[str]
     returns: str
@@ -23,17 +25,19 @@ class FunctionInfo:
 
 @dataclass
 class ClassInfo:
+    """Detailed information about a class in the codebase."""
     name: str
     methods: List[FunctionInfo]
     base_classes: List[str]
     docstring: str
     code: CodeSnippet
     file_path: str
-    attributes: List[Dict[str, str]]  # name, type_annotation, docstring
+    attributes: List[Dict[str, Optional[str]]]
     complexity: int = 1
 
 @dataclass
 class FileInfo:
+    """Comprehensive information about a file for LLM analysis."""
     path: Path
     type: str
     content: str
@@ -41,9 +45,11 @@ class FileInfo:
     dependencies: Set[str]
     functions: Dict[str, FunctionInfo]
     classes: Dict[str, ClassInfo]
+    unused_imports: Set[str] = field(default_factory=set)
 
 @dataclass
 class ProjectMetrics:
+    """Aggregated metrics for the entire project."""
     complexity: 'ComplexityMetrics'
     quality: 'QualityMetrics'
     dependencies: 'DependencyMetrics'
@@ -74,9 +80,9 @@ class ProjectMetrics:
             'complexity': self.complexity.maintainability_index / 100,
             'quality': self.quality.quality_score() / 100,
             'security': self.security.security_score / 100,
-            'performance': self.performance.performance_score / 100,
+            'performance': self.performance.performance_score / 100,  # Changed () to attribute access
             'patterns': sum(p.confidence for p in self.patterns.design_patterns) / max(len(self.patterns.design_patterns), 1),
-            'dependencies': self.dependencies.health_score() / 100  # Added parentheses to call method
+            'dependencies': self.dependencies.health_score() / 100
         }
 
         overall_score = sum(weights[metric] * scores[metric] for metric in weights)
