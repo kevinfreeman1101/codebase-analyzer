@@ -1,1 +1,41 @@
-.vscode
+# Python-specific
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+virtualenv/
+env/
+
+# Dependency caches
+pip-wheel-metadata/
+*.lock
+
+# Coverage and testing
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+*.cov
+
+# Editor/IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Local config/secrets
+*.local
+*.env
+secrets/
