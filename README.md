@@ -42,10 +42,3 @@ pytest tests/
 - Submit pull requests to the main branch
 - Ensure tests pass (pytest tests/)
 
-## Next Steps After Test Run
-
-Once you run `pytest tests/` with these fixes:
-
-1. **Share Output:** I’ll adjust `test_codebase_analyzer.py` based on any failures (e.g., attribute mismatches or missing dependencies).
-2. **Integration Tests:** I’ll provide `/mnt/Egg/code/python/apps/codebase-analyzer/tests/integration/test_integration.py`.
-3. **CI/CD:** I’ll finalize the GitHub Actions workflow.
