@@ -31,6 +31,10 @@ metrics = analyzer.analyze_project(Path("/path/to/project"))
 print(analyzer.generate_summary())
 ```
 
+```console
+foo@bar:~$ codebase-analyzer <path_to_project>
+```
+
 ## Running Tests
 
 ```bash
