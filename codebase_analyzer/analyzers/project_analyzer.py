@@ -30,8 +30,13 @@ class ProjectAnalyzer:
     def analyze(self) -> str:
         """Analyze the project and return a formatted summary with dependency health.
 
+        This method recursively scans the project directory, excluding ignored directories
+        like '.git' and '__pycache__', and processes each file using appropriate analyzers
+        (PythonAnalyzer for .py files, GenericAnalyzer for others). It logs debugging
+        information and handles exceptions gracefully, ensuring a robust summary for LLM use.
+
         Returns:
-            str: Formatted summary string for LLM consumption.
+            str: Formatted summary string containing project structure, metrics, and dependency health.
         """
         project_files: List[Path] = self._get_project_files()
         for file_path in project_files:
