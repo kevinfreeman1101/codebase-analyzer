@@ -1,3 +1,10 @@
+"""Module for analyzing Python files to extract detailed code structure and dependencies.
+
+This module provides the PythonAnalyzer class, which inherits from BaseAnalyzer to
+specialize in parsing Python source code. It extracts functions, classes, imports,
+type hints, and complexity metrics, enabling comprehensive analysis for LLM advisors.
+"""
+
 import ast
 import sys
 from typing import Set, List, Optional, Dict, Any
