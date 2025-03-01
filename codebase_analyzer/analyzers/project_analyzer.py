@@ -10,17 +10,23 @@ from ..formatters.summary_formatter import SummaryFormatter
 from ..utils.file_utils import should_analyze_file, get_file_type
 from ..models.data_classes import FileInfo
 
+# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger: logging.Logger = logging.getLogger(__name__)
 
 class ProjectAnalyzer:
-    """Analyzes an entire project directory and generates a detailed summary for LLM advisors."""
+    """Analyzes an entire project directory and generates a detailed summary for LLM advisors.
+
+    This class orchestrates the analysis of a project by scanning all files, applying appropriate
+    analyzers based on file type, and formatting the results into a comprehensive summary.
+    It supports dependency health checks and detailed logging for debugging purposes.
+    """
 
     def __init__(self, root_path: Path) -> None:
-        """Initialize the ProjectAnalyzer with project root.
+        """Initialize the ProjectAnalyzer with the project root directory.
 
         Args:
-            root_path: Path to the project root directory.
+            root_path: Path to the root directory of the project to analyze.
         """
         self.root_path: Path = root_path
         self.formatter: SummaryFormatter = SummaryFormatter(root_path)
@@ -30,10 +36,10 @@ class ProjectAnalyzer:
     def analyze(self) -> str:
         """Analyze the project and return a formatted summary with dependency health.
 
-        This method recursively scans the project directory, excluding ignored directories
-        like '.git' and '__pycache__', and processes each file using appropriate analyzers
-        (PythonAnalyzer for .py files, GenericAnalyzer for others). It logs debugging
-        information and handles exceptions gracefully, ensuring a robust summary for LLM use.
+        This method scans the project directory recursively, excluding ignored directories,
+        and processes each file using PythonAnalyzer for .py files or GenericAnalyzer for others.
+        It logs debugging information about file processing and handles exceptions gracefully,
+        ensuring a robust summary suitable for LLM consumption.
 
         Returns:
             str: Formatted summary string containing project structure, metrics, and dependency health.
@@ -63,16 +69,19 @@ class ProjectAnalyzer:
     def _analyze_file(self, file_path: Path) -> Optional[FileInfo]:
         """Analyze a single file and return its detailed information.
 
+        Determines the file type and applies the appropriate analyzer (PythonAnalyzer for .py,
+        GenericAnalyzer for others). Skips files that should not be analyzed based on predefined rules.
+
         Args:
             file_path: Path to the file to analyze.
 
         Returns:
-            Optional[FileInfo]: File information or None if analysis fails.
+            Optional[FileInfo]: File information if analysis succeeds, None otherwise.
         """
         if not should_analyze_file(str(file_path)):
             return None
 
-        file_type = get_file_type(str(file_path))
+        file_type: str = get_file_type(str(file_path))
         analyzer_class = PythonAnalyzer if file_type == 'python' else GenericAnalyzer
         analyzer = analyzer_class(str(file_path))
         return analyzer.analyze()
@@ -80,33 +89,39 @@ class ProjectAnalyzer:
     def _get_project_files(self) -> List[Path]:
         """Get all project files recursively, excluding ignored directories.
 
+        Walks the directory tree starting from root_path, filtering out directories specified
+        in ignored_dirs, and collects all file paths.
+
         Returns:
             List[Path]: List of file paths in the project.
         """
-        project_files = []
+        project_files: List[Path] = []
         for root, dirs, files in os.walk(self.root_path):
             dirs[:] = [d for d in dirs if d not in self.ignored_dirs]
             for file in files:
-                file_path = Path(root) / file
+                file_path: Path = Path(root) / file
                 project_files.append(file_path)
         return project_files
 
     def _extract_project_metadata(self) -> Dict[str, str]:
         """Extract project metadata from setup.py and __init__.py files for context.
 
+        Parses setup.py for project details (name, version, etc.) and __init__.py for version
+        information, providing context for the summary.
+
         Returns:
-            Dict[str, str]: Metadata dictionary.
+            Dict[str, str]: Metadata dictionary with keys like 'name', 'version', etc.
         """
-        metadata = {'name': '', 'version': '', 'description': '', 'author': '', 'python_version': ''}
-        setup_info = self._extract_setup_info()
+        metadata: Dict[str, str] = {'name': '', 'version': '', 'description': '', 'author': '', 'python_version': ''}
+        setup_info: Dict[str, str] = self._extract_setup_info()
         metadata.update(setup_info)
 
-        init_file = self.root_path / '__init__.py'
+        init_file: Path = self.root_path / '__init__.py'
         if init_file.exists():
-            with open(init_file) as f:
-                content = f.read()
+            with open(init_file, encoding='utf-8') as f:
+                content: str = f.read()
                 try:
-                    tree = ast.parse(content)
+                    tree: ast.AST = ast.parse(content)
                     for node in ast.walk(tree):
                         if isinstance(node, ast.Assign):
                             for target in node.targets:
@@ -115,17 +130,24 @@ class ProjectAnalyzer:
                                         metadata['version'] = node.value.s
                 except SyntaxError:
                     pass
+
         return metadata
 
     def _extract_setup_info(self) -> Dict[str, str]:
-        """Extract information from setup.py for project context."""
-        setup_file = self.root_path / 'setup.py'
-        metadata = {}
+        """Extract information from setup.py for project context.
+
+        Reads and parses setup.py to extract metadata such as name, version, and author.
+
+        Returns:
+            Dict[str, str]: Metadata extracted from setup.py.
+        """
+        setup_file: Path = self.root_path / 'setup.py'
+        metadata: Dict[str, str] = {}
         if setup_file.exists():
-            with open(setup_file) as f:
-                content = f.read()
+            with open(setup_file, encoding='utf-8') as f:
+                content: str = f.read()
                 try:
-                    tree = ast.parse(content)
+                    tree: ast.AST = ast.parse(content)
                     for node in ast.walk(tree):
                         if isinstance(node, ast.Call) and getattr(node.func, 'id', '') == 'setup':
                             for keyword in node.keywords:
@@ -141,19 +163,20 @@ class ProjectAnalyzer:
     def _check_dependency_health(self) -> Dict[str, str]:
         """Check dependency health using pip and safety.
 
+        Executes 'pip list --outdated' and 'safety check' to assess dependency status,
+        capturing output for inclusion in the summary.
+
         Returns:
-            Dict[str, str]: Health report with outdated and vulnerable packages.
+            Dict[str, str]: Health report with 'outdated' and 'vulnerabilities' keys.
         """
-        health = {'outdated': '', 'vulnerabilities': ''}
+        health: Dict[str, str] = {'outdated': '', 'vulnerabilities': ''}
         try:
-            # Check outdated packages
             result = subprocess.run(['pip', 'list', '--outdated'], capture_output=True, text=True)
             health['outdated'] = result.stdout.strip() or "All packages up-to-date"
         except Exception as e:
             health['outdated'] = f"Error checking outdated packages: {str(e)}"
 
         try:
-            # Check vulnerabilities (requires `safety` installed)
             result = subprocess.run(['safety', 'check'], capture_output=True, text=True)
             health['vulnerabilities'] = result.stdout.strip() or "No vulnerabilities found"
         except Exception as e:
