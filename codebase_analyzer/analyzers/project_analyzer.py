@@ -1,3 +1,10 @@
+"""Module for analyzing project directories and generating detailed summaries.
+
+This module provides the ProjectAnalyzer class, which scans a project directory,
+analyzes files using type-specific analyzers, and produces a formatted summary
+including dependency health information for LLM consumption.
+"""
+
 import ast
 import logging
 import os
