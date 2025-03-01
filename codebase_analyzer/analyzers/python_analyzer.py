@@ -1,6 +1,7 @@
 import ast
 import sys
 from typing import Set, List, Optional, Dict, Any
+from pathlib import Path
 from .base_analyzer import BaseAnalyzer
 from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo, CodeSnippet
 from ..utils.file_utils import safe_read_file
