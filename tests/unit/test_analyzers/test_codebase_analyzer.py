@@ -1,5 +1,3 @@
-"""Tests for CodebaseAnalyzer."""
-
 import pytest
 from pathlib import Path
 from codebase_analyzer.analyzer import CodebaseAnalyzer
@@ -19,12 +17,10 @@ class TestCodebaseAnalyzer:
             "main.py": "def main():\n    print('hello')"
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        result = self.analyzer.analyze_project(project_dir)
-    
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert result.total_files == 1
         assert result.total_lines == 2
-        assert result.complexity.cyclomatic_complexity >= 1.0  # At least one decision point
+        assert result.complexity.cyclomatic_complexity >= 1.0
         assert result.quality.lint_score > 0
 
     def test_analyze_project_with_complexity(self):
@@ -39,12 +35,10 @@ def complex_function(x):
 """
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        result = self.analyzer.analyze_project(project_dir)
-    
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert result.total_files == 1
         assert result.total_lines > 5
-        assert result.complexity.cyclomatic_complexity > 1.0  # Multiple decision points
+        assert result.complexity.cyclomatic_complexity > 1.0
 
     def test_analyze_project_with_vulnerabilities(self):
         """Test analyzing a project with potential security issues."""
@@ -55,16 +49,13 @@ def risky():
 """
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        result = self.analyzer.analyze_project(project_dir)
-    
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert len(result.security.vulnerabilities) > 0
 
     def test_analyze_project_empty(self):
         """Test analyzing an empty project directory."""
         project_dir = self.helper.create_temp_project({})
-        result = self.analyzer.analyze_project(project_dir)
-    
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert result.total_files == 0
         assert result.total_lines == 0
 
@@ -79,12 +70,10 @@ def risky():
             "main.py": "def main():\n    print('hello')"
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        self.analyzer.analyze_project(project_dir)
+        self.analyzer.analyze_project(Path(project_dir))
         summary = self.analyzer.generate_summary()
-    
         assert isinstance(summary, str)
-        assert "CODEBASE ANALYSIS SUMMARY" in summary  # Match actual output case
+        assert "CODEBASE ANALYSIS SUMMARY" in summary
         assert f"Total Python Files: {self.analyzer.project_metrics.total_files}" in summary
         assert "COMPLEXITY METRICS" in summary
         assert "QUALITY METRICS" in summary
@@ -105,10 +94,8 @@ def risky():
             "main.py": "def main():\n    print('hello')"
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        result = self.analyzer.analyze_project(project_dir)
+        result = self.analyzer.analyze_project(Path(project_dir))
         summary = self.analyzer.generate_summary()
-    
         assert "ANALYSIS ERRORS" in summary
         assert "Simulated complexity error" in summary
-        assert result.complexity.cyclomatic_complexity == 0.0  # Default value on error
+        assert result.complexity.cyclomatic_complexity == 0.0

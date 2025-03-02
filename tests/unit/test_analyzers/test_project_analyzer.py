@@ -14,9 +14,8 @@ class TestProjectAnalyzer:
         """Test analyzing an empty directory."""
         mocker.patch('subprocess.run', return_value=mocker.Mock(stdout="Mocked output"))
         project_dir = self.helper.create_temp_project({})
-        analyzer = ProjectAnalyzer(root_path=project_dir)
+        analyzer = ProjectAnalyzer(root_path=Path(project_dir))
         result = analyzer.analyze()
-        
         assert isinstance(result, str)
         assert "CODEBASE SUMMARY" in result
         assert "Total Files: 0" in result
@@ -30,19 +29,15 @@ class TestProjectAnalyzer:
             "tests/test_main.py": "def test_main(): pass"
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        analyzer = ProjectAnalyzer(root_path=project_dir)
+        analyzer = ProjectAnalyzer(root_path=Path(project_dir))
         result = analyzer.analyze()
-    
         assert isinstance(result, str)
         assert "CODEBASE SUMMARY" in result
         assert str(project_dir) in result
         assert "Project Overview" in result
-    
         assert "main.py" in result
         assert "utils/helper.py" in result
         assert "tests/test_main.py" in result
-    
         assert "Total Files: 3" in result
         assert "Python Files: 3" in result
 
@@ -71,17 +66,13 @@ def test_helper():
 """
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        analyzer = ProjectAnalyzer(root_path=project_dir)
+        analyzer = ProjectAnalyzer(root_path=Path(project_dir))
         result = analyzer.analyze()
-    
         assert isinstance(result, str)
         assert "CODEBASE SUMMARY" in result
-    
         assert "src/main.py" in result
         assert "src/utils/helper.py" in result
         assert "tests/test_main.py" in result
-    
         assert "main" in result
         assert "helper_function" in result
 
@@ -96,15 +87,12 @@ Description""",
             "requirements.txt": "pytest>=6.0.0"
         }
         project_dir = self.helper.create_temp_project(files)
-    
-        analyzer = ProjectAnalyzer(root_path=project_dir)
+        analyzer = ProjectAnalyzer(root_path=Path(project_dir))
         result = analyzer.analyze()
-    
         assert isinstance(result, str)
         assert "CODEBASE SUMMARY" in result
-    
         assert "Python Files: 1" in result
-        assert "Documentation Files: 2" in result  # README.md and requirements.txt
+        assert "Documentation Files: 2" in result
         assert "Configuration Files: 1" in result
         assert "Total Files: 4" in result
 

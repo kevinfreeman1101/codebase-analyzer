@@ -131,7 +131,7 @@ class CodebaseAnalyzer:
         """Generate a detailed summary of the analysis for LLM advisors.
 
         Includes project overview, metric breakdowns with vulnerabilities,
-        errors encountered, and recommendations for maximum context.
+        parsing errors, and recommendations for maximum context.
 
         Returns:
             str: Formatted summary string with comprehensive insights.

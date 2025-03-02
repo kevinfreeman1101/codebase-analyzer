@@ -11,7 +11,7 @@ class GenericAnalyzer(BaseAnalyzer):
 
     def get_file_type(self) -> str:
         """Determine the file type based on extension."""
-        ext = self.file_path.lower().split('.')[-1]
+        ext = self.file_path.suffix.lower().lstrip('.')
         if ext in ['md', 'rst', 'txt']:
             return 'documentation'
         elif ext in ['json', 'yaml', 'yml', 'ini', 'cfg']:

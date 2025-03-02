@@ -1,5 +1,3 @@
-"""Tests for DependencyAnalyzer in dependency_metrics.py."""
-
 import pytest
 from pathlib import Path
 from codebase_analyzer.metrics.dependency_metrics import DependencyAnalyzer, DependencyMetrics
@@ -20,7 +18,7 @@ class TestDependencyAnalyzer:
             "requirements.txt": "numpy>=1.24.3"
         }
         project_dir = self.helper.create_temp_project(files)
-        result = self.analyzer.analyze_project(project_dir)
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert "os" in result.direct_dependencies
         assert "numpy" in result.direct_dependencies
         assert result.health_score() > 0
@@ -38,7 +36,7 @@ class TestDependencyAnalyzer:
             "requirements.txt": "numpy>=1.24.3"
         }
         project_dir = self.helper.create_temp_project(files)
-        result = self.analyzer.analyze_project(project_dir)
+        result = self.analyzer.analyze_project(Path(project_dir))
         assert "numpy" in result.direct_dependencies
         assert len(result.vulnerable_dependencies) == 1
         assert result.vulnerable_dependencies[0]["name"] == "numpy"

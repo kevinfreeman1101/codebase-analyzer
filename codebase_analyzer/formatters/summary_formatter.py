@@ -1,10 +1,11 @@
+"""Formatter for generating concise project summaries."""
+
+from typing import Dict, Optional, Set, List
 from pathlib import Path
-from typing import Dict, List, Optional, Set
-import os
-from ..models.data_classes import FileInfo
+from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo
 
 class SummaryFormatter:
-    """Formats codebase analysis results into a readable summary for LLM understanding."""
+    """Generates a concise summary of the project analysis."""
 
     def __init__(self, root_path: Path):
         """Initialize the SummaryFormatter with project root.
@@ -13,332 +14,147 @@ class SummaryFormatter:
             root_path: Path to the project root directory.
         """
         self.root_path = root_path
-        self.source_files = {}
-        self.file_structure = {}
-        self.file_counts = {}
-        self.total_files = 0
-        self.total_size = 0
-        self.function_count = 0
-        self.class_count = 0
-        self.documented_count = 0
-        self.dependencies = {
+        self.source_files: Dict[str, FileInfo] = {}
+        self.file_structure: Dict[str, Dict] = {}  # Nested dicts until leaf sets
+        self.file_counts: Dict[str, int] = {}
+        self.total_files: int = 0
+        self.total_size: float = 0
+        self.function_count: int = 0
+        self.class_count: int = 0
+        self.documented_count: int = 0
+        self.dependencies: Dict[str, Set[str]] = {
             'required': set(),
             'standard': set(),
             'development': set()
         }
-        self.dependency_health = {'outdated': '', 'vulnerabilities': ''}  # Track dependency health
-        self.project_overview = {
+        self.dependency_health: Dict[str, str] = {'outdated': '', 'vulnerabilities': ''}  # Track dependency health
+        self.project_overview: Dict[str, str] = {
             'name': self.root_path.name,
             'description': '',
             'python_version': '',
             'author': '',
             'version': ''
         }
-        self.build_artifacts = set()
 
-        # File type display names
-        self.file_type_names = {
-            'python': 'Python Files',
-            'md': 'Documentation Files',
-            'json': 'Configuration Files',
-            'txt': 'Text Files',
-            'documentation': 'Documentation Files',
-            'configuration': 'Configuration Files',
-            'text': 'Text Files'
-        }
+    def add_source_file(self, relative_path: str, file_info: FileInfo) -> None:
+        """Add source file information to the formatter.
 
-    def _get_size_str(self, size_in_bytes: int) -> str:
-        """Convert bytes to human-readable string."""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_in_bytes < 1024:
-                return f"{size_in_bytes:.1f} {unit}"
-            size_in_bytes /= 1024
-        return f"{size_in_bytes:.1f} TB"
-
-    def _get_percentage(self, part: int, total: int) -> int:
-        """Calculate percentage, handling division by zero."""
-        return round((part / total) * 100) if total > 0 else 0
-
-    def _get_file_type_counts(self) -> Dict[str, int]:
-        """Count files by type for summary statistics."""
-        type_counts = {}
-        for info in self.source_files.values():
-            file_type = info.type
-            type_counts[file_type] = type_counts.get(file_type, 0) + 1
-        return type_counts
-
-    def _format_project_overview(self) -> List[str]:
-        """Format the project overview section with metadata."""
-        sections = [
-            "Project Overview",
-            "--------------",
-            f"Name: {self.project_overview['name']}"
-        ]
-        if self.project_overview['description']:
-            sections.append(f"Description: {self.project_overview['description']}")
-        if self.project_overview['version']:
-            sections.append(f"Version: {self.project_overview['version']}")
-        if self.project_overview['author']:
-            sections.append(f"Author: {self.project_overview['author']}")
-        if self.project_overview['python_version']:
-            sections.append(f"Python Version: {self.project_overview['python_version']}")
-        return sections
-
-    def _format_summary_statistics(self) -> List[str]:
-        """Format the summary statistics section with file metrics."""
-        dir_count = sum(1 for path in self.root_path.rglob("*") 
-                       if path.is_dir() 
-                       and not any(part.startswith(('.', '__pycache__', '*.egg-info')) 
-                                  for part in path.parts))
-        metrics = [
-            "Summary Statistics",
-            "------------------",
-            f"Directories: {dir_count}",
-            f"Total Files: {self.total_files}",
-            f"Total Size: {self._get_size_str(self.total_size)}",
-            f"Classes: {self.class_count}",
-            f"Functions: {self.function_count}",
-            f"Documented: {self.documented_count} ({self._get_percentage(self.documented_count, self.function_count)}% of functions)",
-            "",
-            "File Distribution:"
-        ]
-        for file_type, count in self._get_file_type_counts().items():
-            display_name = self.file_type_names.get(file_type, file_type.capitalize())
-            metrics.append(f"- {display_name}: {count} files")
-        return metrics
-
-    def _format_tree(self, path: Path, prefix: str = "", is_last: bool = True) -> List[str]:
-        """Generate hierarchical tree structure for directory layout."""
-        lines = []
-        if any(part.startswith('.') for part in path.parts) or \
-           any(part.startswith('__pycache__') for part in path.parts):
-            return lines
-
-        if path != self.root_path:
-            connector = "└─ " if is_last else "├─ "
-            lines.append(f"{prefix}{connector}{path.name}")
-            prefix += "   " if is_last else "│  "
-
-        if path.is_dir():
-            children = sorted(list(path.iterdir()))
-            for i, child in enumerate(children):
-                is_last_child = (i == len(children) - 1)
-                lines.extend(self._format_tree(child, prefix, is_last_child))
-        return lines
-
-    def _format_function_groups(self, grouped_funcs: Dict[str, List[tuple]], indent: str = "") -> List[str]:
-        """Format grouped functions with proper indentation and documentation."""
-        lines = []
-        if grouped_funcs['public']:
-            lines.append(f"{indent}Public Functions:")
-            for func_name, func_info in grouped_funcs['public']:
-                lines.append(f"{indent}  - {func_name}")
-                if func_info.docstring:
-                    doc_lines = func_info.docstring.split('\n')
-                    for line in doc_lines:
-                        if line.strip():
-                            if any(marker in line for marker in ['Args:', 'Returns:', 'Raises:']):
-                                lines.append(f"{indent}    {line}")
-                            else:
-                                lines.append(f"{indent}    {line.strip()}")
-
-        if grouped_funcs['private']:
-            if grouped_funcs['public']:
-                lines.append("")
-            lines.append(f"{indent}Private Functions:")
-            for func_name, func_info in grouped_funcs['private']:
-                lines.append(f"{indent}  - {func_name}")
-                if func_info.docstring:
-                    doc_lines = func_info.docstring.split('\n')
-                    for line in doc_lines:
-                        if line.strip():
-                            if any(marker in line for marker in ['Args:', 'Returns:', 'Raises:']):
-                                lines.append(f"{indent}    {line}")
-                            else:
-                                lines.append(f"{indent}    {line.strip()}")
-        return lines
-
-    def _group_functions(self, functions: Dict[str, 'FunctionInfo']) -> Dict[str, List[tuple]]:
-        """Group functions by visibility (public/private) for clarity."""
-        grouped = {'public': [], 'private': []}
-        for func_name, func_info in sorted(functions.items()):
-            if func_name == '__init__':
-                continue
-            if func_name.startswith('_'):
-                grouped['private'].append((func_name, func_info))
-            else:
-                grouped['public'].append((func_name, func_info))
-        return grouped
-
-    def _format_source_files(self) -> List[str]:
-        """Format the source files section with detailed code info."""
-        sections = ["Source Files", "------------"]
-        by_type: Dict[str, List[tuple]] = {}
-        for file_path, info in self.source_files.items():
-            file_type = info.type
-            if file_type not in by_type:
-                by_type[file_type] = []
-            by_type[file_type].append((file_path, info))
-
-        for file_type, files in sorted(by_type.items()):
-            display_name = self.file_type_names.get(file_type, file_type.capitalize())
-            sections.append(f"\n{display_name}:\n")
-            for file_path, info in sorted(files):
-                sections.append(f"{file_path}")
-                sections.append(f"  Size: {self._get_size_str(info.size)}")
-
-                if info.functions:
-                    grouped_funcs = self._group_functions(info.functions)
-                    sections.extend(self._format_function_groups(grouped_funcs, indent="  "))
-                if info.classes:
-                    for class_name, class_info in sorted(info.classes.items()):
-                        sections.append(f"  Class: {class_name}")
-                        if class_info.docstring:
-                            sections.append(f"    {class_info.docstring}")
-                        if class_info.attributes:
-                            sections.append("    Attributes:")
-                            for attr_info in sorted(class_info.attributes, key=lambda x: x.get('name', '')):
-                                attr_name = attr_info.get('name', '')
-                                attr_type = f": {attr_info.get('type_annotation', '')}" if attr_info.get('type_annotation') else ""
-                                attr_doc = f" - {attr_info.get('docstring', '')}" if attr_info.get('docstring') else ""
-                                sections.append(f"      - {attr_name}{attr_type}{attr_doc}")
-                        if class_info.methods:
-                            sections.append("    Methods:")
-                            public_methods = [(m.name, m.docstring) for m in class_info.methods if not m.name.startswith('_') and m.name != '__init__']
-                            private_methods = [(m.name, m.docstring) for m in class_info.methods if m.name.startswith('_') and m.name != '__init__']
-                            if public_methods:
-                                sections.append("      Public:")
-                                for method_name, method_doc in sorted(public_methods):
-                                    method_str = f"        - {method_name}"
-                                    if method_doc:
-                                        method_str += f"\n          {method_doc}"
-                                    sections.append(method_str)
-                            if private_methods:
-                                sections.append("      Private:")
-                                for method_name, method_doc in sorted(private_methods):
-                                    method_str = f"        - {method_name}"
-                                    if method_doc:
-                                        method_str += f"\n          {method_doc}"
-                                    sections.append(method_str)
-
-                if not info.functions and not info.classes and file_type.lower() == 'python':
-                    if info.content and info.content.strip().startswith('"""'):
-                        sections.append(f"  {info.content.strip().splitlines()[0]}")
-                    else:
-                        sections.append("  (Empty or initialization file)")
-                sections.append("")
-        return sections
-
-    def _format_dependencies(self) -> List[str]:
-        """Format the dependencies and health section for dependency analysis."""
-        sections = ["Dependencies", "------------"]
-        if self.dependencies['required']:
-            sections.extend(["\nRequired:", *[f"- {dep}" for dep in sorted(self.dependencies['required'])]])
-        if self.dependencies['development']:
-            sections.extend(["\nDevelopment:", *[f"- {dep}" for dep in sorted(self.dependencies['development'])]])
-        sections.extend([
-            "\nDependency Health",
-            "----------------",
-            "Outdated Packages:",
-            self.dependency_health['outdated'],
-            "\nVulnerabilities:",
-            self.dependency_health['vulnerabilities']
-        ])
-        return sections if any(deps for deps in self.dependencies.values()) or self.dependency_health else []
-
-    def _format_build_artifacts(self) -> List[str]:
-        """Format the build artifacts section."""
-        return ["Build Artifacts", "--------------", *[f"- {artifact}" for artifact in sorted(self.build_artifacts)]] if self.build_artifacts else []
-
-    def update_project_overview(self, info: Dict) -> None:
-        """Update project overview information with metadata."""
-        if info:
-            self.project_overview.update({
-                k: v for k, v in info.items() 
-                if k in self.project_overview and v
-            })
-
-    def set_python_version(self, version: str) -> None:
-        """Set the minimum Python version requirement."""
-        self.project_overview['python_version'] = version
-
-    def set_project_overview(self, overview: str) -> None:
-        """Set the project overview description."""
-        self.project_overview['description'] = overview
-
-    def add_build_artifact(self, file_path: str) -> None:
-        """Add a build artifact file to the summary."""
-        self.build_artifacts.add(file_path)
+        Args:
+            relative_path: Path relative to the root.
+            file_info: FileInfo object containing analysis results.
+        """
+        self.source_files[relative_path] = file_info
         self.total_files += 1
-        full_path = self.root_path / file_path
-        if full_path.exists():
-            self.total_size += os.path.getsize(full_path)
+        self.total_size += file_info.size
 
-    def add_dependency(self, category: str, dependencies: Set[str]) -> None:
-        """Add project dependencies to the specified category."""
-        if category in self.dependencies:
-            self.dependencies[category].update(dependencies)
+        parts = relative_path.split('/')
+        current_level = self.file_structure
+        for part in parts[:-1]:
+            if part not in current_level:
+                current_level[part] = {}
+            current_level = current_level[part]
+        if '_files' not in current_level:
+            current_level['_files'] = set()
+        current_level['_files'].add(parts[-1])
 
-    def add_dependency_health(self, health: Dict[str, str]) -> None:
-        """Add dependency health information to the summary."""
-        self.dependency_health.update(health)
-
-    def add_source_file(self, file_path: str, info: FileInfo) -> None:
-        """Add information about a source file to the summary."""
-        self.source_files[file_path] = info
-        self.total_files += 1
-
-        full_path = self.root_path / Path(file_path)
-        if full_path.exists():
-            size = os.path.getsize(full_path)
-            self.total_size += size
-        else:
-            size = info.size
-
-        file_type = info.type
+        file_type = file_info.type
         self.file_counts[file_type] = self.file_counts.get(file_type, 0) + 1
 
-        if file_type == 'python':
-            self.function_count += len(info.functions)
-            self.documented_count += sum(1 for f in info.functions.values() if f.docstring)
-            if info.classes:
-                self.class_count += len(info.classes)
-                for class_info in info.classes.values():
-                    self.function_count += len(class_info.methods)
-                    self.documented_count += sum(1 for m in class_info.methods if m.docstring)
+        self.function_count += len(file_info.functions)
+        self.class_count += len(file_info.classes)
 
-        path_parts = file_path.split('/')
-        current_dict = self.file_structure
-        for part in path_parts[:-1]:
-            if part not in current_dict:
-                current_dict[part] = {}
-            current_dict = current_dict[part]
-        current_dict[path_parts[-1]] = {
-            'type': file_type,
-            'size': size,
-            'functions': len(info.functions),
-            'classes': len(info.classes)
-        }
+        for func_info in file_info.functions.values():
+            if func_info.docstring:
+                self.documented_count += 1
 
-        if info.dependencies:
-            self.add_dependency('required', info.dependencies)
+        for class_info in file_info.classes.values():
+            if class_info.docstring:
+                self.documented_count += 1
+            self.documented_count += sum(1 for m in class_info.methods.values() if m.docstring)
 
-    def format_summary(self) -> str:
-        """Generate the complete codebase summary with all sections."""
-        sections = [
-            "CODEBASE SUMMARY",
-            "===============",
-            f"\nRoot: {self.root_path.absolute()}"
-        ]
-        sections.extend(self._format_project_overview())
-        sections.extend([""])
-        sections.extend(self._format_summary_statistics())
-        sections.extend(["", "Directory Structure", "------------------"])
-        sections.extend(self._format_tree(self.root_path))
-        sections.extend([""])
-        sections.extend(self._format_source_files())
-        sections.extend(self._format_dependencies())
-        if self.build_artifacts:
-            sections.extend([""])
-            sections.extend(self._format_build_artifacts())
-        return "\n".join(sections)
+        if 'test' in relative_path.lower():
+            self.dependencies['development'].update(file_info.dependencies)
+        else:
+            self.dependencies['required'].update(file_info.dependencies - self.dependencies['standard'])
+
+    def generate_summary(self) -> str:
+        """Generate a formatted summary of the project analysis.
+
+        Returns:
+            str: A concise summary string including function and class details.
+        """
+        summary = []
+        summary.append("CODEBASE SUMMARY")
+        summary.append("===============")
+        summary.append(f"\nRoot: {self.root_path}")
+
+        summary.append("\nProject Overview")
+        summary.append("--------------")
+        summary.append(f"Name: {self.project_overview['name']}")
+
+        summary.append("\nSummary Statistics")
+        summary.append("------------------")
+        summary.append(f"Directories: {len(self.file_structure)}")
+        summary.append(f"Total Files: {self.total_files}")
+        summary.append(f"Total Size: {self.total_size / 1024:.1f} KB")
+        summary.append(f"Classes: {self.class_count}")
+        summary.append(f"Functions: {self.function_count}")
+        summary.append(f"Documented: {self.documented_count} ({self.documented_count / (self.function_count + self.class_count) * 100:.0f}% of functions)" if (self.function_count + self.class_count) > 0 else "Documented: 0 (0% of functions)")
+
+        summary.append("\nFile Distribution:")
+        for file_type, count in self.file_counts.items():
+            summary.append(f"- {file_type.capitalize()} Files: {count} files")
+
+        summary.append("\nDirectory Structure")
+        summary.append("------------------")
+        self._format_file_structure(summary, self.file_structure)
+
+        summary.append("\nSource Files")
+        summary.append("------------")
+        for path, file_info in self.source_files.items():
+            summary.append(f"\n{path}")
+            summary.append(f"  Size: {file_info.size / 1024:.1f} KB")
+            if file_info.functions:
+                summary.append("  Functions:")
+                for fname, finfo in file_info.functions.items():
+                    summary.append(f"    - {fname} (Lines: {finfo.loc}, Documented: {'Yes' if finfo.docstring else 'No'})")
+            if file_info.classes:
+                summary.append("  Classes:")
+                for cname, cinfo in file_info.classes.items():
+                    summary.append(f"    - {cname} (Methods: {len(cinfo.methods)}, Documented: {'Yes' if cinfo.docstring else 'No'})")
+            if not file_info.functions and not file_info.classes:
+                summary.append("  (Empty or initialization file)")
+
+        summary.append("\nDependencies")
+        summary.append("------------")
+        for dep_type, deps in self.dependencies.items():
+            if deps:
+                summary.append(f"\n{dep_type.capitalize()}:")
+                summary.extend(f"  - {dep}" for dep in sorted(deps))
+
+        summary.append("\nDependency Health")
+        summary.append("----------------")
+        summary.append("Outdated Packages:")
+        summary.append(self.dependency_health['outdated'] or "None detected")
+        summary.append("\nVulnerabilities:")
+        summary.append(self.dependency_health['vulnerabilities'] or "None detected")
+
+        return "\n".join(summary)
+
+    def _format_file_structure(self, summary: List[str], structure: Dict[str, dict], prefix: str = "├─ ") -> None:
+        """Recursively format the file structure.
+
+        Args:
+            summary: List to append formatted lines to.
+            structure: Dictionary representing the file structure.
+            prefix: String prefix for tree visualization.
+        """
+        items = sorted([k for k in structure.keys() if k != '_files'])
+        files = structure.get('_files', set())
+        all_items = items + sorted(files)
+        for i, item in enumerate(all_items):
+            is_last = i == len(all_items) - 1
+            summary.append(f"{prefix}{item}")
+            if item in structure and isinstance(structure[item], dict):
+                new_prefix = "│  " if not is_last else "   "
+                self._format_file_structure(summary, structure[item], new_prefix + "├─ ")
