@@ -1,3 +1,10 @@
+"""Module for comprehensive codebase analysis and metric generation.
+
+This module provides the CodebaseAnalyzer class, which orchestrates the analysis of a
+project directory by leveraging specialized analyzers for complexity, quality,
+dependencies, patterns, security, and performance, producing a detailed summary for LLM advisors.
+"""
+
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
@@ -12,9 +19,14 @@ from .recommendations.recommendation_engine import RecommendationEngine
 from .formatters.summary_formatter import SummaryFormatter
 
 class CodebaseAnalyzer:
-    """Main class for analyzing codebases and generating metrics."""
+    """Main class for analyzing codebases and generating metrics.
 
-    def __init__(self):
+    Coordinates multiple analyzers to evaluate a project’s quality, complexity, security,
+    performance, and dependency health, consolidating results into a unified report.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the CodebaseAnalyzer with component analyzers."""
         self.complexity_analyzer = ComplexityAnalyzer()
         self.quality_analyzer = QualityAnalyzer()
         self.dependency_analyzer = DependencyAnalyzer()
@@ -81,7 +93,7 @@ class CodebaseAnalyzer:
         """Generate a human-readable summary of the analysis.
 
         Returns:
-            str: Formatted summary string.
+            str: Formatted summary string containing key metrics and recommendations.
         """
         if not self.project_metrics:
             return "No analysis data available. Run analyze_project first."

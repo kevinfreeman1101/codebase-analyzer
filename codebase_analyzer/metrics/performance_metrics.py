@@ -1,3 +1,10 @@
+"""Module for analyzing Python code performance and identifying optimization opportunities.
+
+This module provides the PerformanceAnalyzer class, which scans Python files to detect
+performance hotspots, loop optimization possibilities, memory-intensive operations,
+and I/O operations, generating a comprehensive performance metrics report.
+"""
+
 import ast
 from typing import Dict, List, Set, Optional
 from dataclasses import dataclass
@@ -5,6 +12,15 @@ from pathlib import Path
 
 @dataclass
 class PerformanceHotspot:
+    """Represents a performance hotspot in the code.
+
+    Attributes:
+        location: File path and line number of the hotspot.
+        complexity: Cyclomatic complexity of the code block.
+        execution_count_estimate: Estimated number of executions (placeholder).
+        optimization_suggestion: Suggested improvement for performance.
+    """
+
     location: str
     complexity: int
     execution_count_estimate: int
@@ -12,6 +28,15 @@ class PerformanceHotspot:
 
 @dataclass
 class LoopOptimization:
+    """Represents a loop optimization opportunity in the code.
+
+    Attributes:
+        location: File path and line number of the loop.
+        loop_type: Type of loop ('For' or 'While').
+        complexity: Cyclomatic complexity of the loop.
+        suggestion: Suggested optimization for the loop.
+    """
+
     location: str
     loop_type: str
     complexity: int
@@ -19,6 +44,16 @@ class LoopOptimization:
 
 @dataclass
 class PerformanceMetrics:
+    """Aggregates performance metrics for a project.
+
+    Attributes:
+        hotspots: List of identified performance hotspots.
+        performance_score: Overall performance score (0-100).
+        loop_optimizations: List of loop optimization opportunities.
+        memory_intensive_ops: List of memory-intensive operations.
+        io_operations: List of I/O operations.
+    """
+
     hotspots: List[PerformanceHotspot]
     performance_score: float
     loop_optimizations: List[LoopOptimization]
@@ -29,6 +64,7 @@ class PerformanceAnalyzer:
     """Analyzes code for performance metrics and optimization opportunities."""
 
     def __init__(self) -> None:
+        """Initialize the PerformanceAnalyzer with empty metric collections."""
         self.hotspots: List[PerformanceHotspot] = []
         self.loop_optimizations: List[LoopOptimization] = []
         self.memory_ops: List[str] = []
