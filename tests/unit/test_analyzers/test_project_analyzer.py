@@ -104,9 +104,8 @@ Description""",
         assert "CODEBASE SUMMARY" in result
     
         assert "Python Files: 1" in result
-        assert "Documentation Files: 1" in result
+        assert "Documentation Files: 2" in result  # README.md and requirements.txt
         assert "Configuration Files: 1" in result
-        assert "Text Files: 1" in result
         assert "Total Files: 4" in result
 
     def test_analyze_empty_project(self, mocker):

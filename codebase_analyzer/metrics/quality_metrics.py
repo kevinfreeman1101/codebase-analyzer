@@ -64,6 +64,7 @@ class QualityAnalyzer:
         """
         total_type_hints: float = 0.0
         total_doc_coverage: float = 0.0
+        total_test_coverage: float = 0.0
         total_lint_score: float = 0.0
         total_lines: float = 0.0
         file_count: int = 0
@@ -77,6 +78,7 @@ class QualityAnalyzer:
                 
                 total_type_hints += metrics.type_hint_coverage
                 total_doc_coverage += metrics.documentation_coverage
+                total_test_coverage += metrics.test_coverage
                 total_lint_score += metrics.lint_score
                 total_lines += metrics.code_to_comment_ratio * 100  # Rough estimate
                 file_count += 1
@@ -89,7 +91,7 @@ class QualityAnalyzer:
         return QualityMetrics(
             type_hint_coverage=total_type_hints / file_count,
             documentation_coverage=total_doc_coverage / file_count,
-            test_coverage=0.0,  # Still placeholder
+            test_coverage=total_test_coverage / file_count,
             lint_score=total_lint_score / file_count,
             code_to_comment_ratio=total_lines / (file_count * 100)
         )
@@ -224,6 +226,24 @@ class QualityAnalyzer:
         return max(0.0, max_score - (issues * 5))  # Deduct 5 points per issue
 
     def _estimate_test_coverage(self, node: ast.AST) -> float:
-        """Estimate test coverage based on test file analysis."""
-        # Placeholder - real implementation needs coverage tools
-        return 0.0
+        """Estimate test coverage by detecting test-like structures.
+
+        Looks for assert statements as a simple proxy for test coverage.
+        Returns a rough percentage based on presence of test indicators.
+        """
+        total_nodes: int = 0
+        test_nodes: int = 0
+
+        class TestVisitor(ast.NodeVisitor):
+            def visit(self, node: ast.AST) -> None:
+                nonlocal total_nodes, test_nodes
+                if hasattr(node, 'lineno'):
+                    total_nodes += 1
+                if isinstance(node, ast.Assert):
+                    test_nodes += 1
+                self.generic_visit(node)
+
+        visitor = TestVisitor()
+        visitor.visit(node)
+
+        return (test_nodes / total_nodes * 100) if total_nodes > 0 else 0.0

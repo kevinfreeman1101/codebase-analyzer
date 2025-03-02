@@ -1,15 +1,22 @@
-from typing import Optional, Dict
+"""Analyzer for generic (non-Python) files to extract basic metadata."""
+
+from typing import Optional, Set
 from pathlib import Path
 from .base_analyzer import BaseAnalyzer
-from ..utils.file_utils import safe_read_file, get_file_type
 from ..models.data_classes import FileInfo
+from ..utils.file_utils import safe_read_file
 
 class GenericAnalyzer(BaseAnalyzer):
-    """Analyzer for generic non-Python files."""
+    """Analyzes generic files that are not Python source code."""
 
     def get_file_type(self) -> str:
-        """Determine the file type based on its extension or content."""
-        return get_file_type(self.file_path)
+        """Determine the file type based on extension."""
+        ext = self.file_path.lower().split('.')[-1]
+        if ext in ['md', 'rst', 'txt']:
+            return 'documentation'
+        elif ext in ['json', 'yaml', 'yml', 'ini', 'cfg']:
+            return 'configuration'
+        return 'text'
 
     def analyze(self) -> Optional[FileInfo]:
         """Analyze a generic file and return its metadata.
@@ -28,5 +35,6 @@ class GenericAnalyzer(BaseAnalyzer):
             size=len(content.encode('utf-8')),
             dependencies=self.dependencies,
             functions={},  # Empty dict for non-Python files
-            classes={}     # Empty dict for non-Python files
+            classes={},    # Empty dict for non-Python files
+            unused_imports=set()  # No imports in non-Python files
         )
