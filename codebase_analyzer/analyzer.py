@@ -1,5 +1,4 @@
-"""Module for comprehensive codebase analysis and metric generation."""
-
+# [Previous imports and setup unchanged]
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
@@ -14,17 +13,11 @@ from .models.data_classes import ProjectMetrics
 from .recommendations.recommendation_engine import RecommendationEngine
 from .formatters.summary_formatter import SummaryFormatter
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class CodebaseAnalyzer:
-    """Main class for analyzing codebases and generating metrics.
-
-    Coordinates multiple analyzers to evaluate a project’s quality, complexity, security,
-    performance, and dependency health, consolidating results into a unified report.
-    """
-
+    # [__init__ and analyze_project unchanged]
     def __init__(self) -> None:
         """Initialize the CodebaseAnalyzer with component analyzers."""
         self.complexity_analyzer = ComplexityAnalyzer()
@@ -35,21 +28,10 @@ class CodebaseAnalyzer:
         self.performance_analyzer = PerformanceAnalyzer()
         self.recommendation_engine = RecommendationEngine()
         self.project_metrics: Optional[ProjectMetrics] = None
-        self.formatter = SummaryFormatter(Path.cwd())  # Default to current directory
-        self.errors: List[str] = []  # Track errors for summary
+        self.formatter = SummaryFormatter(Path.cwd())
+        self.errors: List[str] = []
 
     def analyze_project(self, project_path: Path) -> ProjectMetrics:
-        """Perform comprehensive analysis of the project.
-
-        Args:
-            project_path: Path to the project root directory.
-
-        Returns:
-            ProjectMetrics: An object containing all analysis metrics.
-
-        Raises:
-            FileNotFoundError: If the project path does not exist.
-        """
         if not project_path.exists():
             error_msg = f"Project path does not exist: {project_path}"
             logger.error(error_msg)
@@ -101,7 +83,7 @@ class CodebaseAnalyzer:
             error_msg = f"Dependency analysis failed: {str(e)}"
             logger.error(error_msg)
             self.errors.append(error_msg)
-            dependency_metrics = DependencyMetrics(set(), {})
+            dependency_metrics = DependencyMetrics(set(), {}, [])
 
         try:
             logger.info("Analyzing code patterns...")
@@ -148,7 +130,7 @@ class CodebaseAnalyzer:
     def generate_summary(self) -> str:
         """Generate a detailed summary of the analysis for LLM advisors.
 
-        Includes project overview, metric breakdowns with function-level complexity details,
+        Includes project overview, metric breakdowns with vulnerabilities,
         errors encountered, and recommendations for maximum context.
 
         Returns:
@@ -209,7 +191,13 @@ class CodebaseAnalyzer:
             summary.append("  Examples of Direct Dependencies:")
             summary.extend(f"    - {dep}" for dep in direct_deps)
         summary.append(f"Dependency Health Score: {self.project_metrics.dependencies.health_score():.1f}/100")
-        summary.append("  - Assesses outdated or risky dependencies")
+        summary.append("  - Assesses outdated or risky dependencies; lower with vulnerabilities")
+        if self.project_metrics.dependencies.vulnerable_dependencies:
+            summary.append("  Vulnerable Dependencies (Top 3):")
+            for vuln in self.project_metrics.dependencies.vulnerable_dependencies[:3]:
+                summary.append(f"    - {vuln['name']} (Version: {vuln['version']})")
+                summary.append(f"      Vulnerability: {vuln['vulnerability']}")
+                summary.append(f"      Severity: {vuln['severity']}")
 
         summary.append("\nDESIGN PATTERN METRICS")
         summary.append("-" * 30)

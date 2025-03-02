@@ -7,3 +7,4 @@ numpy>=1.24.3
 seaborn>=0.12.2
 click>=8.1.7
 coverage>=7.6.2
+safety>=3.2.5  # Added for dependency vulnerability scanning
