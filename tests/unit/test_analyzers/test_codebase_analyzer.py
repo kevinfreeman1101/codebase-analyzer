@@ -94,3 +94,21 @@ def risky():
         invalid_path = Path("/nonexistent/path")
         with pytest.raises(FileNotFoundError):
             self.analyzer.analyze_project(invalid_path)
+
+    def test_analyze_project_with_errors(self, mocker):
+        """Test analyzing a project with simulated analysis errors."""
+        mocker.patch(
+            'codebase_analyzer.metrics.complexity_analyzer.ComplexityAnalyzer.analyze_project',
+            side_effect=Exception("Simulated complexity error")
+        )
+        files = {
+            "main.py": "def main():\n    print('hello')"
+        }
+        project_dir = self.helper.create_temp_project(files)
+    
+        result = self.analyzer.analyze_project(project_dir)
+        summary = self.analyzer.generate_summary()
+    
+        assert "ANALYSIS ERRORS" in summary
+        assert "Simulated complexity error" in summary
+        assert result.complexity.cyclomatic_complexity == 0.0  # Default value on error

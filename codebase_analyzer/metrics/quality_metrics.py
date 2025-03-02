@@ -1,11 +1,8 @@
-"""Module for analyzing code quality metrics in Python projects.
-
-This module provides the QualityAnalyzer class, which evaluates Python files for quality
-attributes such as type hint coverage, documentation coverage, test coverage, lint score,
-and code-to-comment ratio, aggregating these into a comprehensive QualityMetrics report.
-"""
+"""Module for analyzing code quality metrics in Python projects."""
 
 import ast
+import subprocess
+import os
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,7 +14,7 @@ class QualityMetrics:
     Attributes:
         type_hint_coverage: Percentage of type-hinted elements.
         documentation_coverage: Percentage of documented elements.
-        test_coverage: Percentage of code covered by tests (placeholder).
+        test_coverage: Percentage of code covered by tests.
         lint_score: Score based on code style issues (0-100).
         code_to_comment_ratio: Ratio of comment lines to code lines.
     """
@@ -69,6 +66,9 @@ class QualityAnalyzer:
         total_lines: float = 0.0
         file_count: int = 0
 
+        # Run coverage for the project if tests exist
+        test_coverage = self._run_coverage(project_path)
+
         for file_path in project_path.rglob('*.py'):
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -78,7 +78,7 @@ class QualityAnalyzer:
                 
                 total_type_hints += metrics.type_hint_coverage
                 total_doc_coverage += metrics.documentation_coverage
-                total_test_coverage += metrics.test_coverage
+                # Use project-wide coverage instead of per-file heuristic
                 total_lint_score += metrics.lint_score
                 total_lines += metrics.code_to_comment_ratio * 100  # Rough estimate
                 file_count += 1
@@ -91,23 +91,22 @@ class QualityAnalyzer:
         return QualityMetrics(
             type_hint_coverage=total_type_hints / file_count,
             documentation_coverage=total_doc_coverage / file_count,
-            test_coverage=total_test_coverage / file_count,
+            test_coverage=test_coverage,
             lint_score=total_lint_score / file_count,
             code_to_comment_ratio=total_lines / (file_count * 100)
         )
 
     def analyze_node(self, node: ast.AST) -> QualityMetrics:
-        """Analyze quality metrics for an AST node."""
+        """Analyze quality metrics for an AST node excluding test coverage."""
         type_coverage: float = self._calculate_type_hint_coverage(node)
         doc_coverage: float = self._calculate_documentation_coverage(node)
-        test_cov: float = self._estimate_test_coverage(node)
         lint: float = self._calculate_lint_score(node)
         comment_ratio: float = self._calculate_code_comment_ratio(node)
 
         return QualityMetrics(
             type_hint_coverage=type_coverage,
             documentation_coverage=doc_coverage,
-            test_coverage=test_cov,
+            test_coverage=0.0,  # Set at project level
             lint_score=lint,
             code_to_comment_ratio=comment_ratio
         )
@@ -226,24 +225,52 @@ class QualityAnalyzer:
         return max(0.0, max_score - (issues * 5))  # Deduct 5 points per issue
 
     def _estimate_test_coverage(self, node: ast.AST) -> float:
-        """Estimate test coverage by detecting test-like structures.
+        """Deprecated: Use _run_coverage for project-level coverage instead."""
+        return 0.0
 
-        Looks for assert statements as a simple proxy for test coverage.
-        Returns a rough percentage based on presence of test indicators.
+    def _run_coverage(self, project_path: Path) -> float:
+        """Run coverage.py on the project to get accurate test coverage.
+
+        Args:
+            project_path: Path to the project root directory.
+
+        Returns:
+            float: Test coverage percentage (0-100), or 0.0 if no tests or errors occur.
         """
-        total_nodes: int = 0
-        test_nodes: int = 0
+        test_dir = project_path / "tests"
+        if not test_dir.exists() or not any(test_dir.rglob("test_*.py")):
+            return 0.0  # No tests found
 
-        class TestVisitor(ast.NodeVisitor):
-            def visit(self, node: ast.AST) -> None:
-                nonlocal total_nodes, test_nodes
-                if hasattr(node, 'lineno'):
-                    total_nodes += 1
-                if isinstance(node, ast.Assert):
-                    test_nodes += 1
-                self.generic_visit(node)
+        try:
+            # Run pytest with coverage
+            result = subprocess.run(
+                ["coverage", "run", "-m", "pytest", str(test_dir)],
+                cwd=str(project_path),
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.returncode != 0:
+                return 0.0  # Test run failed
 
-        visitor = TestVisitor()
-        visitor.visit(node)
+            # Generate coverage report
+            report = subprocess.run(
+                ["coverage", "report"],
+                cwd=str(project_path),
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if report.returncode != 0:
+                return 0.0  # Report generation failed
 
-        return (test_nodes / total_nodes * 100) if total_nodes > 0 else 0.0
+            # Parse the last line of the report for total coverage
+            lines = report.stdout.strip().splitlines()
+            if not lines or "TOTAL" not in lines[-1]:
+                return 0.0
+
+            total_line = lines[-1]
+            coverage_percent = float(total_line.split()[-1].rstrip('%'))
+            return coverage_percent
+        except (subprocess.SubprocessError, ValueError, FileNotFoundError):
+            return 0.0  # Handle missing coverage tool or parsing errors gracefully

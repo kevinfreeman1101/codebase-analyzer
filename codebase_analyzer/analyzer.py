@@ -1,13 +1,9 @@
-"""Module for comprehensive codebase analysis and metric generation.
-
-This module provides the CodebaseAnalyzer class, which orchestrates the analysis of a
-project directory by leveraging specialized analyzers for complexity, quality,
-dependencies, patterns, security, and performance, producing a detailed summary for LLM advisors.
-"""
+"""Module for comprehensive codebase analysis and metric generation."""
 
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
+import logging
 from .metrics.complexity_analyzer import ComplexityAnalyzer, ComplexityMetrics
 from .metrics.quality_metrics import QualityAnalyzer, QualityMetrics
 from .metrics.dependency_metrics import DependencyAnalyzer, DependencyMetrics
@@ -17,6 +13,10 @@ from .metrics.performance_metrics import PerformanceAnalyzer, PerformanceMetrics
 from .models.data_classes import ProjectMetrics
 from .recommendations.recommendation_engine import RecommendationEngine
 from .formatters.summary_formatter import SummaryFormatter
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class CodebaseAnalyzer:
     """Main class for analyzing codebases and generating metrics.
@@ -36,6 +36,7 @@ class CodebaseAnalyzer:
         self.recommendation_engine = RecommendationEngine()
         self.project_metrics: Optional[ProjectMetrics] = None
         self.formatter = SummaryFormatter(Path.cwd())  # Default to current directory
+        self.errors: List[str] = []  # Track errors for summary
 
     def analyze_project(self, project_path: Path) -> ProjectMetrics:
         """Perform comprehensive analysis of the project.
@@ -50,29 +51,84 @@ class CodebaseAnalyzer:
             FileNotFoundError: If the project path does not exist.
         """
         if not project_path.exists():
-            raise FileNotFoundError(f"Project path does not exist: {project_path}")
+            error_msg = f"Project path does not exist: {project_path}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
 
-        print("Starting comprehensive project analysis...")
-        total_files = sum(1 for _ in project_path.rglob('*.py'))
-        total_lines = sum(len(open(f).readlines()) for f in project_path.rglob('*.py') if f.is_file())
+        logger.info("Starting comprehensive project analysis...")
+        self.errors.clear()
+        total_files = 0
+        total_lines = 0
 
-        print("Analyzing complexity metrics...")
-        complexity_metrics = self.complexity_analyzer.analyze_project(project_path)
+        try:
+            total_files = sum(1 for _ in project_path.rglob('*.py'))
+            total_lines = sum(len(open(f, encoding='utf-8').readlines()) 
+                            for f in project_path.rglob('*.py') if f.is_file())
+        except Exception as e:
+            error_msg = f"Failed to count files/lines: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
 
-        print("Analyzing code quality...")
-        quality_metrics = self.quality_analyzer.analyze_project(project_path)
+        complexity_metrics = None
+        quality_metrics = None
+        dependency_metrics = None
+        pattern_metrics = None
+        security_metrics = None
+        performance_metrics = None
 
-        print("Analyzing dependencies...")
-        dependency_metrics = self.dependency_analyzer.analyze_project(project_path)
+        try:
+            logger.info("Analyzing complexity metrics...")
+            complexity_metrics = self.complexity_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Complexity analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            complexity_metrics = ComplexityMetrics(0.0, 0.0, [])
 
-        print("Analyzing code patterns...")
-        pattern_metrics = self.pattern_analyzer.analyze_project(project_path)
+        try:
+            logger.info("Analyzing code quality...")
+            quality_metrics = self.quality_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Quality analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            quality_metrics = QualityMetrics(0.0, 0.0, 0.0, 0.0, 0.0)
 
-        print("Analyzing security...")
-        security_metrics = self.security_analyzer.analyze_project(project_path)
+        try:
+            logger.info("Analyzing dependencies...")
+            dependency_metrics = self.dependency_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Dependency analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            dependency_metrics = DependencyMetrics(set(), {})
 
-        print("Analyzing performance...")
-        performance_metrics = self.performance_analyzer.analyze_project(project_path)
+        try:
+            logger.info("Analyzing code patterns...")
+            pattern_metrics = self.pattern_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Pattern analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            pattern_metrics = PatternMetrics([])
+
+        try:
+            logger.info("Analyzing security...")
+            security_metrics = self.security_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Security analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            security_metrics = SecurityMetrics([], 0.0, [])
+
+        try:
+            logger.info("Analyzing performance...")
+            performance_metrics = self.performance_analyzer.analyze_project(project_path)
+        except Exception as e:
+            error_msg = f"Performance analysis failed: {str(e)}"
+            logger.error(error_msg)
+            self.errors.append(error_msg)
+            performance_metrics = PerformanceMetrics([], 0.0, [], [], [])
 
         self.project_metrics = ProjectMetrics(
             complexity=complexity_metrics,
@@ -93,7 +149,7 @@ class CodebaseAnalyzer:
         """Generate a detailed summary of the analysis for LLM advisors.
 
         Includes project overview, metric breakdowns with function-level complexity details,
-        and recommendations to provide maximum context for understanding the codebase.
+        errors encountered, and recommendations for maximum context.
 
         Returns:
             str: Formatted summary string with comprehensive insights.
@@ -112,7 +168,13 @@ class CodebaseAnalyzer:
         summary.append(f"Overall Project Score: {self.project_metrics.calculate_overall_score():.1f}/100")
         summary.append("  - Weighted average of complexity, quality, security, and performance metrics")
 
-        # Complexity Metrics
+        if self.errors:
+            summary.append("\nANALYSIS ERRORS")
+            summary.append("-" * 30)
+            summary.extend(f"  - {error}" for error in self.errors[:5])
+            if len(self.errors) > 5:
+                summary.append(f"  - {len(self.errors) - 5} additional errors logged")
+
         summary.append("\nCOMPLEXITY METRICS")
         summary.append("-" * 30)
         summary.append(f"Average Cyclomatic Complexity: {self.project_metrics.complexity.cyclomatic_complexity:.2f}")
@@ -126,21 +188,19 @@ class CodebaseAnalyzer:
                 summary.append(f"      Complexity: {func['complexity']}, Lines: {func['lines']}")
                 summary.append(f"      Code Snippet: {func['code']}...")
 
-        # Quality Metrics
         summary.append("\nQUALITY METRICS")
         summary.append("-" * 30)
         summary.append(f"Type Hint Coverage: {self.project_metrics.quality.type_hint_coverage:.1f}%")
         summary.append(f"  - Proportion of functions/variables with type annotations")
         summary.append(f"Documentation Coverage: {self.project_metrics.quality.documentation_coverage:.1f}%")
         summary.append(f"  - Percentage of modules, classes, and functions with docstrings")
-        summary.append(f"Test Coverage (Estimated): {self.project_metrics.quality.test_coverage:.1f}%")
-        summary.append(f"  - Rough estimate via assert statements; use `coverage.py` for precision")
+        summary.append(f"Test Coverage: {self.project_metrics.quality.test_coverage:.1f}%")
+        summary.append(f"  - Measured via coverage.py; 0% if no tests or errors occurred")
         summary.append(f"Lint Score: {self.project_metrics.quality.lint_score:.1f}/100")
         summary.append(f"  - Reflects adherence to style guidelines (e.g., function length, error handling)")
         summary.append(f"Code-to-Comment Ratio: {self.project_metrics.quality.code_to_comment_ratio:.2f}")
         summary.append("  - Limited by AST; inline comments not captured")
 
-        # Dependency Metrics
         summary.append("\nDEPENDENCY METRICS")
         summary.append("-" * 30)
         summary.append(f"Direct Dependencies: {len(self.project_metrics.dependencies.direct_dependencies)}")
@@ -151,7 +211,6 @@ class CodebaseAnalyzer:
         summary.append(f"Dependency Health Score: {self.project_metrics.dependencies.health_score():.1f}/100")
         summary.append("  - Assesses outdated or risky dependencies")
 
-        # Pattern Metrics
         summary.append("\nDESIGN PATTERN METRICS")
         summary.append("-" * 30)
         summary.append(f"Patterns Detected: {len(self.project_metrics.patterns.design_patterns)}")
@@ -162,7 +221,6 @@ class CodebaseAnalyzer:
                 summary.append(f"      Locations: {', '.join(pattern.locations[:2])}")
                 summary.append(f"      Description: {pattern.description}")
 
-        # Security Metrics
         summary.append("\nSECURITY METRICS")
         summary.append("-" * 30)
         summary.append(f"Vulnerabilities Found: {len(self.project_metrics.security.vulnerabilities)}")
@@ -179,7 +237,6 @@ class CodebaseAnalyzer:
                 summary.append(f"    - {pattern.name} (Confidence: {pattern.confidence:.2f})")
                 summary.append(f"      Locations: {', '.join(pattern.locations[:2])}")
 
-        # Performance Metrics
         summary.append("\nPERFORMANCE METRICS")
         summary.append("-" * 30)
         summary.append(f"Hotspots Identified: {len(self.project_metrics.performance.hotspots)}")
@@ -201,7 +258,6 @@ class CodebaseAnalyzer:
             summary.append("  I/O Operations (Top 3):")
             summary.extend(f"    - {op}" for op in self.project_metrics.performance.io_operations[:3])
 
-        # Recommendations
         recommendations = self.recommendation_engine.generate_recommendations(self.project_metrics)
         if recommendations:
             summary.append("\nRECOMMENDATIONS FOR IMPROVEMENT")
