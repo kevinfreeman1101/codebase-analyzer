@@ -17,5 +17,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip list # Debug: Show installed packages
+    - name: Check safety
+      run: |
+        safety --version || echo "Safety not installed or failed"
     - name: Run tests
-      run: pytest tests/unit/test_analyzers/ --cov=codebase_analyzer --no-fail-on-xfail
+      run: |
+        pytest --version # Debug: Confirm pytest version
+        pytest tests/unit/test_analyzers/ --cov=codebase_analyzer -v # Verbose output
