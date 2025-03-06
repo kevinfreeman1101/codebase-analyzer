@@ -1,7 +1,7 @@
 """Analyzer for entire projects, orchestrating file-level analysis."""
 
 import json
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 from pathlib import Path
 from hashlib import sha256
 import subprocess
@@ -55,7 +55,7 @@ class ProjectAnalyzer:
         except IOError:
             pass  # Silently fail if cache write fails
 
-    def _check_dependency_health(self) -> tuple[str, str]:
+    def _check_dependency_health(self) -> Tuple[str, str]:
         """Check dependency health using safety and pip for outdated packages."""
         req_hash = self._hash_requirements()
         if req_hash:
@@ -74,9 +74,9 @@ class ProjectAnalyzer:
                 timeout=30
             )
             if result.returncode == 0:
-                vulnerabilities = result.stdout
+                vulnerabilities = str(result.stdout)
             else:
-                vulnerabilities = result.stderr or "Safety check failed"
+                vulnerabilities = str(result.stderr) or "Safety check failed"
         except (subprocess.SubprocessError, FileNotFoundError) as e:
             vulnerabilities = f"Safety check error: {str(e)}"
 
@@ -89,7 +89,10 @@ class ProjectAnalyzer:
                 text=True,
                 timeout=30
             )
-            outdated = result.stdout if result.returncode == 0 else result.stderr
+            if result.returncode == 0:
+                outdated = str(result.stdout)
+            else:
+                outdated = str(result.stderr) or "Pip outdated check failed"
         except (subprocess.SubprocessError, FileNotFoundError) as e:
             outdated = f"Pip outdated check error: {str(e)}"
 
@@ -97,7 +100,7 @@ class ProjectAnalyzer:
         if req_hash:
             self._save_dependency_cache(req_hash, outdated, vulnerabilities)
 
-        return outdated, vulnerabilities
+        return str(outdated), str(vulnerabilities)
 
     def analyze(self) -> Optional[str]:
         """Analyze the project directory and generate a summary.

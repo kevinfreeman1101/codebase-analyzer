@@ -1,181 +1,190 @@
-"""Analyzer for Python files to extract detailed metrics."""
+"""Analyzer for Python source files, extracting functions, classes, and dependencies."""
 
-import ast
-import logging
-from typing import Optional, Set, Dict, List
+from typing import Dict, Optional, Set
 from pathlib import Path
+import ast
+from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo, MethodInfo
 from .base_analyzer import BaseAnalyzer
-from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo, CodeSnippet
-from ..utils.file_utils import safe_read_file
-
-logger = logging.getLogger(__name__)
 
 class PythonAnalyzer(BaseAnalyzer):
-    """Analyzes Python source files."""
+    """Analyzes Python source files to extract functions, classes, and dependencies."""
+
+    def __init__(self, file_path: Path, dependencies: Optional[Set[str]] = None) -> None:
+        super().__init__(file_path)
+        self.dependencies: Set[str] = dependencies if dependencies is not None else set()
 
     def get_file_type(self) -> str:
+        """Return the type of file being analyzed.
+
+        Returns:
+            str: The file type ('python').
+        """
         return "python"
 
     def analyze(self) -> Optional[FileInfo]:
-        """Analyze a Python file and return its metadata.
+        """Analyze the Python source file and return structured information.
 
         Returns:
-            Optional[FileInfo]: File information if successful, None if critical errors occur.
+            Optional[FileInfo]: FileInfo object with analysis results, or None if analysis fails.
         """
-        content = safe_read_file(self.file_path)
-        if content is None:
-            logger.error(f"Failed to read file: {self.file_path}")
-            return None
-
-        try:
-            tree = ast.parse(content)
-        except (SyntaxError, ValueError) as e:
-            logger.warning(f"Syntax error in {self.file_path}: {str(e)}")
+        source = self._read_file()
+        if source is None:
             return FileInfo(
-                path=Path(self.file_path),
+                file_path=self.file_path,
                 type=self.get_file_type(),
-                content=content,
-                size=len(content.encode('utf-8')),
-                dependencies=set(),
+                size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
                 functions={},
                 classes={},
-                unused_imports=set()
+                dependencies=self.dependencies
             )
 
-        functions: Dict[str, FunctionInfo] = {}
-        classes: Dict[str, ClassInfo] = {}
-        imports: Set[str] = set()
-        used_names: Set[str] = set()
-
-        class Visitor(ast.NodeVisitor):
-            def __init__(self, analyzer):
-                self.analyzer = analyzer
-                self.functions = functions
-                self.classes = classes
-                self.imports = imports
-                self.used_names = used_names
-
-            def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-                code = CodeSnippet(ast.unparse(node), node.lineno, node.end_lineno or node.lineno)
-                params = [arg.arg for arg in node.args.args]
-                returns = ast.unparse(node.returns) if node.returns else "None"
-                docstring = ast.get_docstring(node) or ""
-                complexity = self.analyzer._calculate_complexity(node)
-                self.functions[node.name] = FunctionInfo(
-                    name=node.name,
-                    params=params,
-                    returns=returns,
-                    docstring=docstring,
-                    dependencies=self.analyzer._extract_dependencies(node),
-                    loc=node.end_lineno - node.lineno + 1 if hasattr(node, 'end_lineno') else 1,
-                    code=code,
-                    file_path=str(self.analyzer.file_path),
-                    complexity=complexity
+        try:
+            if not source.strip():  # Empty file
+                return FileInfo(
+                    file_path=self.file_path,
+                    type=self.get_file_type(),
+                    size=self.file_path.stat().st_size,
+                    functions={},
+                    classes={},
+                    dependencies=self.dependencies
                 )
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
-                        self.used_names.add(child.id)
-                self.generic_visit(node)
 
-            def visit_ClassDef(self, node: ast.ClassDef) -> None:
-                class_methods = {}
-                for item in node.body:
-                    if isinstance(item, ast.FunctionDef):
-                        code = CodeSnippet(ast.unparse(item), item.lineno, item.end_lineno or item.lineno)
-                        params = [arg.arg for arg in item.args.args]
-                        returns = ast.unparse(item.returns) if item.returns else "None"
-                        docstring = ast.get_docstring(item) or ""
-                        complexity = self.analyzer._calculate_complexity(item)
-                        class_methods[item.name] = FunctionInfo(
-                            name=item.name,
-                            params=params,
-                            returns=returns,
-                            docstring=docstring,
-                            dependencies=self.analyzer._extract_dependencies(item),
-                            loc=item.end_lineno - item.lineno + 1 if hasattr(item, 'end_lineno') else 1,
-                            code=code,
-                            file_path=str(self.analyzer.file_path),
-                            complexity=complexity
-                        )
-                        for child in ast.walk(item):
-                            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
-                                self.used_names.add(child.id)
-                code = CodeSnippet(ast.unparse(node), node.lineno, node.end_lineno or node.lineno)
-                bases = [ast.unparse(base) for base in node.bases]
-                docstring = ast.get_docstring(node) or ""
-                complexity = self.analyzer._calculate_complexity(node)
-                self.classes[node.name] = ClassInfo(
-                    name=node.name,
-                    methods=class_methods,
-                    base_classes=bases,
-                    docstring=docstring,
-                    code=code,
-                    file_path=str(self.analyzer.file_path),
-                    attributes=self.analyzer._extract_attributes(node),
-                    complexity=complexity
-                )
-                self.generic_visit(node)
+            tree = ast.parse(source)
+            functions: Dict[str, FunctionInfo] = {}
+            classes: Dict[str, ClassInfo] = {}
+            imported_names: Set[str] = set()
+            alias_names: Dict[str, str] = {}  # Map alias to original name
+            used_names: Set[str] = set()
 
-            def visit_Import(self, node: ast.Import) -> None:
-                for name in node.names:
-                    self.imports.add(name.name.split('.')[0])
-                self.generic_visit(node)
+            # First pass: Collect imports and track used names
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for name in node.names:
+                        module = name.name.split('.')[0]
+                        imported_names.add(module)
+                        if name.asname:
+                            alias_names[name.asname] = module
+                        else:
+                            alias_names[module] = module
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        module = node.module.split('.')[0]
+                        imported_names.add(module)
+                        for name in node.names:
+                            if name.asname:
+                                alias_names[name.asname] = name.name
+                            else:
+                                alias_names[name.name] = name.name
+                elif isinstance(node, ast.Name):
+                    # Direct name usage (e.g., 'os' in 'os.path')
+                    used_names.add(node.id)
+                elif isinstance(node, ast.Attribute):
+                    # Attribute access (e.g., 'os' in 'os.path.join')
+                    current = node
+                    while isinstance(current, ast.Attribute):
+                        current = current.value
+                    if isinstance(current, ast.Name):
+                        used_names.add(current.id)
 
-            def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-                if node.module:
-                    self.imports.add(node.module.split('.')[0])
-                self.generic_visit(node)
+            # Update self.dependencies with all imported modules
+            self.dependencies.update(imported_names)
 
-            def visit_Name(self, node: ast.Name) -> None:
-                if isinstance(node.ctx, ast.Load):
-                    self.used_names.add(node.id)
-                self.generic_visit(node)
+            # Determine unused imports
+            unused_imports = set()
+            for name in imported_names:
+                # Check if the module or its alias is used
+                is_used = False
+                for used_name in used_names:
+                    if used_name in alias_names and alias_names[used_name] == name:
+                        is_used = True
+                        break
+                if not is_used:
+                    unused_imports.add(name)
 
-        visitor = Visitor(self)
-        visitor.visit(tree)
+            # Second pass: Analyze functions and classes
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    # Extract parameters
+                    params = [arg.arg for arg in node.args.args]
+                    # Calculate complexity (simplified cyclomatic complexity)
+                    complexity = 1  # Base complexity
+                    for child in ast.walk(node):
+                        if isinstance(child, (ast.If, ast.For, ast.While, ast.With)):
+                            complexity += 1
+                    # Attempt to infer return type (simplified)
+                    returns = "None"
+                    for child in ast.walk(node):
+                        if isinstance(child, ast.Return):
+                            if child.value is None:
+                                returns = "None"
+                            elif isinstance(child.value, ast.Constant):
+                                if isinstance(child.value.value, (int, float)):
+                                    returns = "int" if isinstance(child.value.value, int) else "float"
+                                elif isinstance(child.value.value, str):
+                                    returns = "str"
+                                elif isinstance(child.value.value, bool):
+                                    returns = "bool"
+                            break
+                    functions[node.name] = FunctionInfo(
+                        loc=self._count_lines(node),
+                        docstring=ast.get_docstring(node),
+                        params=params,
+                        complexity=complexity,
+                        returns=returns
+                    )
+                elif isinstance(node, ast.ClassDef):
+                    methods = {}
+                    for child in node.body:
+                        if isinstance(child, ast.FunctionDef):
+                            methods[child.name] = MethodInfo(
+                                loc=self._count_lines(child),
+                                docstring=ast.get_docstring(child)
+                            )
+                    classes[node.name] = ClassInfo(
+                        methods=methods,
+                        docstring=ast.get_docstring(node)
+                    )
 
-        unused_imports = imports - used_names
+            return FileInfo(
+                file_path=self.file_path,
+                type=self.get_file_type(),
+                size=self.file_path.stat().st_size,
+                functions=functions,
+                classes=classes,
+                dependencies=self.dependencies,
+                unused_imports=unused_imports
+            )
+        except (SyntaxError, FileNotFoundError):
+            return FileInfo(
+                file_path=self.file_path,
+                type=self.get_file_type(),
+                size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
+                functions={},
+                classes={},
+                dependencies=self.dependencies
+            )
 
-        return FileInfo(
-            path=Path(self.file_path),
-            type=self.get_file_type(),
-            content=content,
-            size=len(content.encode('utf-8')),
-            dependencies=imports,
-            functions=functions,
-            classes=classes,
-            unused_imports=unused_imports
-        )
+    def _read_file(self) -> Optional[str]:
+        """Read the file content safely.
 
-    def _calculate_complexity(self, node: ast.AST) -> int:
-        """Calculate cyclomatic complexity for a node."""
-        complexity = 1
-        for child in ast.walk(node):
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.Try, ast.With)):
-                complexity += 1
-            elif isinstance(child, ast.BoolOp):
-                complexity += len(child.values) - 1
-        return complexity
+        Returns:
+            Optional[str]: File content, or None if reading fails.
+        """
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except (IOError, UnicodeDecodeError):
+            return None
 
-    def _extract_dependencies(self, node: ast.AST) -> Set[str]:
-        """Extract dependencies used within a node."""
-        deps = set()
-        for child in ast.walk(node):
-            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
-                deps.add(child.id)
-        return deps
+    def _count_lines(self, node: ast.AST) -> int:
+        """Count the number of lines in an AST node.
 
-    def _extract_attributes(self, node: ast.ClassDef) -> List[Dict[str, Optional[str]]]:
-        """Extract attributes from a class definition."""
-        attrs = []
-        for item in node.body:
-            if isinstance(item, ast.AnnAssign):
-                attrs.append({
-                    "name": item.target.id if isinstance(item.target, ast.Name) else "unknown",
-                    "type": ast.unparse(item.annotation) if item.annotation else None
-                })
-            elif isinstance(item, ast.Assign):
-                for target in item.targets:
-                    if isinstance(target, ast.Name):
-                        attrs.append({"name": target.id, "type": None})
-        return attrs
+        Args:
+            node: AST node to analyze.
+
+        Returns:
+            int: Number of lines in the node.
+        """
+        if hasattr(node, 'end_lineno') and hasattr(node, 'lineno'):
+            return node.end_lineno - node.lineno + 1
+        return 0

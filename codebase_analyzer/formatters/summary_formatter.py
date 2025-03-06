@@ -58,6 +58,11 @@ class SummaryFormatter:
         current_level['_files'].add(parts[-1])
 
         file_type = file_info.type
+        # Group md and txt as Documentation Files, json as Configuration Files
+        if file_type in ('md', 'txt'):
+            file_type = 'Documentation'
+        elif file_type == 'json':
+            file_type = 'Configuration'
         self.file_counts[file_type] = self.file_counts.get(file_type, 0) + 1
 
         self.function_count += len(file_info.functions)
@@ -135,9 +140,9 @@ class SummaryFormatter:
         summary.append("\nDependency Health")
         summary.append("----------------")
         summary.append("Outdated Packages:")
-        summary.append(self.dependency_health['outdated'] or "None detected")
+        summary.append(str(self.dependency_health['outdated']) or "None detected")
         summary.append("\nVulnerabilities:")
-        summary.append(self.dependency_health['vulnerabilities'] or "None detected")
+        summary.append(str(self.dependency_health['vulnerabilities']) or "None detected")
 
         return "\n".join(summary)
 

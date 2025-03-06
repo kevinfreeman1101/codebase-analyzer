@@ -1,22 +1,25 @@
-"""Analyzer for generic (non-Python) files to extract basic metadata."""
+"""Analyzer for generic (non-Python) files, extracting basic metadata."""
 
-from typing import Optional, Set
+from typing import Optional
 from pathlib import Path
-from .base_analyzer import BaseAnalyzer
 from ..models.data_classes import FileInfo
 from ..utils.file_utils import safe_read_file
+from .base_analyzer import BaseAnalyzer
 
 class GenericAnalyzer(BaseAnalyzer):
-    """Analyzes generic files that are not Python source code."""
+    """Analyzes generic (non-Python) files to extract basic metadata."""
+
+    def __init__(self, file_path: Path) -> None:
+        super().__init__(file_path)
 
     def get_file_type(self) -> str:
-        """Determine the file type based on extension."""
-        ext = self.file_path.suffix.lower().lstrip('.')
-        if ext in ['md', 'rst', 'txt']:
-            return 'documentation'
-        elif ext in ['json', 'yaml', 'yml', 'ini', 'cfg']:
-            return 'configuration'
-        return 'text'
+        """Return the type of file being analyzed.
+
+        Returns:
+            str: The file type based on extension (e.g., 'json', 'md', 'txt').
+        """
+        extension = self.file_path.suffix.lower().lstrip('.')
+        return extension if extension else "unknown"
 
     def analyze(self) -> Optional[FileInfo]:
         """Analyze a generic file and return its metadata.
@@ -29,12 +32,10 @@ class GenericAnalyzer(BaseAnalyzer):
             return None
 
         return FileInfo(
-            path=Path(self.file_path),
+            file_path=self.file_path,
             type=self.get_file_type(),
-            content=content,
             size=len(content.encode('utf-8')),
-            dependencies=self.dependencies,
             functions={},  # Empty dict for non-Python files
             classes={},    # Empty dict for non-Python files
-            unused_imports=set()  # No imports in non-Python files
+            dependencies=set()  # No dependencies in non-Python files
         )
