@@ -21,6 +21,9 @@ jobs:
     - name: Check safety
       run: |
         safety --version || echo "Safety not installed or failed"
+    - name: Clean dependency cache
+      run: |
+        rm -f .dependency_cache.json
     - name: Run tests
       run: |
         pytest --version # Debug: Confirm pytest version
