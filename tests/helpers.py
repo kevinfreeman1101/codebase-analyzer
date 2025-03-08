@@ -1,14 +1,14 @@
 """Helper utilities for unit tests."""
 
 import shutil
-import tempfile
 from pathlib import Path
+import tempfile
 
 class TestHelper:
     """Helper class for creating temporary test environments."""
 
-    def __init__(self):
-        self.temp_dir = Path(tempfile.mkdtemp())
+    def __init__(self, temp_dir: Path):
+        self.temp_dir = temp_dir
 
     def create_temp_file(self, content: str) -> Path:
         """Create a temporary file with given content."""
@@ -20,7 +20,7 @@ class TestHelper:
     def create_temp_project(self, files: dict) -> Path:
         """Create a temporary project directory with given files."""
         project_dir = self.temp_dir / "project"
-        project_dir.mkdir()
+        project_dir.mkdir(exist_ok=True)
         for rel_path, content in files.items():
             file_path = project_dir / rel_path
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -29,5 +29,5 @@ class TestHelper:
         return project_dir
 
     def cleanup_temp(self):
-        """Remove the temporary directory and its contents."""
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        """No-op since cleanup is handled by the fixture."""
+        pass

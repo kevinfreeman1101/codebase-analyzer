@@ -3,6 +3,19 @@ import pytest
 from pathlib import Path
 import tempfile
 import shutil
+from tests.helpers import TestHelper
+
+@pytest.fixture(scope="session")
+def temp_dir():
+    """Provide a session-scoped temporary directory."""
+    temp_dir = Path(tempfile.mkdtemp())
+    yield temp_dir
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+@pytest.fixture(scope="session")
+def helper(temp_dir):
+    """Provide a TestHelper instance with a session-scoped temp directory."""
+    return TestHelper(temp_dir)
 
 @pytest.fixture
 def sample_codebase():
