@@ -1,7 +1,7 @@
 """Analyzer for entire projects, orchestrating file-level analysis."""
 
 import json
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple, Any
 from pathlib import Path
 from hashlib import sha256
 import subprocess
@@ -155,24 +155,29 @@ class ProjectAnalyzer:
         logger.debug(f"_check_dependency_health took {time.time() - start_time:.2f} seconds")
         return str(outdated), str(vulnerabilities)
 
-    def analyze(self) -> Optional[str]:
-        """Analyze the project directory and generate a summary.
+    def analyze(self) -> Dict[str, Any]:
+        """Analyze the project directory and return structured results.
 
         Returns:
-            Optional[str]: Formatted summary of the project analysis, or None if analysis fails.
+            Dict[str, Any]: Analysis results including file info and dependency health.
         """
         start_time = time.time()
         logger.debug(f"Analyzing project at: {self.root_path}")
         if not self.root_path.exists() or not self.root_path.is_dir():
             logger.error("Project path does not exist or is not a directory")
-            return None
+            return {"results": {}, "error": "Invalid project path"}
 
         file_analysis_start = time.time()
+        results = {}
         for file_path in self.root_path.rglob("*"):
             if file_path.is_file():
                 relative_path = file_path.relative_to(self.root_path)
-                analyzer: Optional[PythonAnalyzer | GenericAnalyzer] = None
+                content = safe_read_file(file_path)
+                if content is None:
+                    results[str(relative_path)] = {"error": "File unreadable or unsupported", "skipped": True}
+                    continue
 
+                analyzer = None
                 if file_path.suffix == '.py':
                     analyzer = PythonAnalyzer(file_path, self.dependencies)
                 else:
@@ -181,6 +186,9 @@ class ProjectAnalyzer:
                 file_info = analyzer.analyze()
                 if file_info:
                     self.formatter.add_source_file(str(relative_path), file_info)
+                    results[str(relative_path)] = file_info
+                else:
+                    results[str(relative_path)] = {"error": "Analysis failed", "skipped": True}
         logger.debug(f"File analysis loop took {time.time() - file_analysis_start:.2f} seconds")
 
         dep_health_start = time.time()
@@ -190,4 +198,8 @@ class ProjectAnalyzer:
         logger.debug(f"Dependency health check took {time.time() - dep_health_start:.2f} seconds")
 
         logger.debug(f"Total analyze method took {time.time() - start_time:.2f} seconds")
-        return self.formatter.generate_summary()
+        return {
+            "results": results,
+            "dependency_health": {"outdated": outdated, "vulnerabilities": vulnerabilities},
+            "summary": self.formatter.generate_summary()
+        }

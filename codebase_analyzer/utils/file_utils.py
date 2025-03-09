@@ -1,6 +1,6 @@
 import mimetypes
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 def should_analyze_file(file_path: str) -> bool:
     """Determine if a file should be analyzed based on its extension.
@@ -50,31 +50,32 @@ def get_file_type(file_path: str) -> str:
         return extension_map[ext]
     return 'python' if mime_type == 'text/x-python' else 'text' if mime_type and mime_type.startswith('text') else ext[1:] if ext else 'text'
 
-def safe_read_file(file_path: str) -> str:
+def safe_read_file(file_path: str) -> Optional[str]:
     """Safely read a file with multiple encoding fallbacks.
 
     Args:
         file_path: Path to the file to read
 
     Returns:
-        The file contents as a string
-
-    Raises:
-        IOError: If the file cannot be read with any encoding
+        The file contents as a string, or None if the file is unsupported or unreadable
     """
+    path = Path(file_path)
     if not should_analyze_file(file_path):
-        raise IOError(f"File type not supported for analysis: {file_path}")
+        print(f"Skipping unsupported file type: {file_path}")
+        return None
     
     encodings = ['utf-8', 'latin-1', 'ascii']
     for encoding in encodings:
         try:
-            with open(file_path, 'r', encoding=encoding) as f:
+            with path.open('r', encoding=encoding) as f:
                 return f.read()
         except UnicodeDecodeError:
             continue
         except IOError as e:
-            raise IOError(f"Cannot read file {file_path}: {str(e)}")
-    raise IOError(f"Cannot decode file {file_path} with available encodings")
+            print(f"Cannot read file {file_path}: {str(e)}")
+            return None
+    print(f"Cannot decode file {file_path} with available encodings")
+    return None
 
 def save_to_file(content: str, file_path: str) -> bool:
     """Save content to a file with proper encoding.

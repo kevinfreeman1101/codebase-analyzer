@@ -1,207 +1,190 @@
+"""Analyzer for Python source files, extracting functions, classes, and dependencies."""
+
+from typing import Dict, Optional, Set
+from pathlib import Path
 import ast
-import sys
-from typing import Set, List, Optional, Dict, Any
+from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo, MethodInfo
 from .base_analyzer import BaseAnalyzer
-from ..models.data_classes import FileInfo, FunctionInfo, ClassInfo, CodeSnippet
-from ..utils.file_utils import safe_read_file
 
 class PythonAnalyzer(BaseAnalyzer):
-    def __init__(self, file_path: str):
+    """Analyzes Python source files to extract functions, classes, and dependencies."""
+
+    def __init__(self, file_path: Path, dependencies: Optional[Set[str]] = None) -> None:
         super().__init__(file_path)
-        self.functions: Dict[str, FunctionInfo] = {}
-        self.classes: Dict[str, ClassInfo] = {}
-        self.imports: Set[str] = set()
-        self.content: Optional[str] = None
-        self.ast_tree: Optional[ast.AST] = None
+        self.dependencies: Set[str] = dependencies if dependencies is not None else set()
 
     def get_file_type(self) -> str:
-        return 'python'
+        """Return the type of file being analyzed.
 
-    def analyze(self) -> FileInfo:
-        """Analyze the Python file and return FileInfo."""
-        try:
-            self.content = safe_read_file(self.file_path)
-        except IOError as e:
-            print(f"Skipping file due to error: {self.file_path} - {e}")
-            self.content = ""
+        Returns:
+            str: The file type ('python').
+        """
+        return "python"
 
-        if self.content:
-            try:
-                self.ast_tree = ast.parse(self.content)
-                self._analyze_ast()
-            except Exception as e:
-                print(f"Error analyzing Python file {self.file_path}: {str(e)}")
+    def analyze(self) -> Optional[FileInfo]:
+        """Analyze the Python source file and return structured information.
 
-        return FileInfo(
-            path=self.file_path,
-            type=self.get_file_type(),
-            content=self.content or "",
-            size=len(self.content or ""),
-            dependencies=self.dependencies,
-            functions=self.functions,
-            classes=self.classes
-        )
-
-    def _analyze_ast(self):
-        """Analyze the AST and collect information about the code."""
-        if not self.ast_tree:
-            return
-
-        for node in ast.walk(self.ast_tree):
-            if isinstance(node, ast.FunctionDef):
-                self._process_function(node)
-            elif isinstance(node, ast.ClassDef):
-                self._process_class(node)
-            elif isinstance(node, ast.Import):
-                self._process_import(node)
-            elif isinstance(node, ast.ImportFrom):
-                self._process_import_from(node)
-
-    def _calculate_complexity(self, node: ast.AST) -> int:
-        """Calculate cyclomatic complexity of a node."""
-        complexity = 1  # Base complexity
-        for child in ast.walk(node):
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.Try, ast.With)):
-                complexity += 1
-            elif isinstance(child, ast.BoolOp):
-                complexity += len(child.values) - 1  # AND/OR increase complexity
-        return complexity
-
-    def _process_function(self, node: ast.FunctionDef) -> Optional[FunctionInfo]:
-        """Process a function definition node."""
-        if not self.content:
-            return None
-
-        try:
-            params = [arg.arg for arg in node.args.args]
-            returns = self._get_return_type(node)
-            docstring = ast.get_docstring(node) or ""
-            deps = self._get_dependencies(node)
-            loc = node.end_lineno - node.lineno + 1
-            code_snippet = self._get_code_snippet(node)
-            complexity = self._calculate_complexity(node)
-
-            function_info = FunctionInfo(
-                name=node.name,
-                params=params,
-                returns=returns,
-                docstring=docstring,
-                dependencies=deps,
-                loc=loc,
-                code=code_snippet,
+        Returns:
+            Optional[FileInfo]: FileInfo object with analysis results, or None if analysis fails.
+        """
+        source = self._read_file()
+        if source is None:
+            return FileInfo(
                 file_path=self.file_path,
-                complexity=complexity
+                type=self.get_file_type(),
+                size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
+                functions={},
+                classes={},
+                dependencies=self.dependencies
             )
 
-            self.functions[node.name] = function_info
-            return function_info
-        except Exception as e:
-            print(f"Error processing function {node.name}: {str(e)}")
-            return None
-
-    def _process_class_attributes(self, node: ast.ClassDef) -> List[Dict[str, Any]]:
-        """Extract class attributes from class body."""
-        attributes = []
-        for item in node.body:
-            if isinstance(item, ast.AnnAssign):
-                attr_name = item.target.id if isinstance(item.target, ast.Name) else None
-                if attr_name:
-                    attr_type = ast.unparse(item.annotation) if item.annotation else None
-                    doc = None
-                    if item.value and isinstance(item.value, ast.Constant):
-                        doc = item.value.value if isinstance(item.value.value, str) else None
-                    attributes.append({
-                        'name': attr_name,
-                        'type_annotation': attr_type,
-                        'docstring': doc
-                    })
-            elif isinstance(item, ast.Assign):
-                for target in item.targets:
-                    if isinstance(target, ast.Name):
-                        attributes.append({
-                            'name': target.id,
-                            'type_annotation': None,
-                            'docstring': None
-                        })
-        return attributes
-
-    def _process_class(self, node: ast.ClassDef) -> Optional[ClassInfo]:
-        """Process a class definition node."""
         try:
-            methods = []
-            for item in node.body:
-                if isinstance(item, ast.FunctionDef):
-                    method_info = self._process_function(item)
-                    if method_info:
-                        methods.append(method_info)
+            if not source.strip():  # Empty file
+                return FileInfo(
+                    file_path=self.file_path,
+                    type=self.get_file_type(),
+                    size=self.file_path.stat().st_size,
+                    functions={},
+                    classes={},
+                    dependencies=self.dependencies
+                )
 
-            attributes = self._process_class_attributes(node)
-            base_classes = [ast.unparse(base) for base in node.bases]
-            code_snippet = self._get_code_snippet(node)
-            complexity = self._calculate_complexity(node)
+            tree = ast.parse(source)
+            functions: Dict[str, FunctionInfo] = {}
+            classes: Dict[str, ClassInfo] = {}
+            imported_names: Set[str] = set()
+            alias_names: Dict[str, str] = {}  # Map alias to original name
+            used_names: Set[str] = set()
 
-            class_info = ClassInfo(
-                name=node.name,
-                methods=methods,
-                base_classes=base_classes,
-                docstring=ast.get_docstring(node) or "",
-                code=code_snippet,
+            # First pass: Collect imports and track used names
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for name in node.names:
+                        module = name.name.split('.')[0]
+                        imported_names.add(module)
+                        if name.asname:
+                            alias_names[name.asname] = module
+                        else:
+                            alias_names[module] = module
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        module = node.module.split('.')[0]
+                        imported_names.add(module)
+                        for name in node.names:
+                            if name.asname:
+                                alias_names[name.asname] = name.name
+                            else:
+                                alias_names[name.name] = name.name
+                elif isinstance(node, ast.Name):
+                    # Direct name usage (e.g., 'os' in 'os.path')
+                    used_names.add(node.id)
+                elif isinstance(node, ast.Attribute):
+                    # Attribute access (e.g., 'os' in 'os.path.join')
+                    current = node
+                    while isinstance(current, ast.Attribute):
+                        current = current.value
+                    if isinstance(current, ast.Name):
+                        used_names.add(current.id)
+
+            # Update self.dependencies with all imported modules
+            self.dependencies.update(imported_names)
+
+            # Determine unused imports
+            unused_imports = set()
+            for name in imported_names:
+                # Check if the module or its alias is used
+                is_used = False
+                for used_name in used_names:
+                    if used_name in alias_names and alias_names[used_name] == name:
+                        is_used = True
+                        break
+                if not is_used:
+                    unused_imports.add(name)
+
+            # Second pass: Analyze functions and classes
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    # Extract parameters
+                    params = [arg.arg for arg in node.args.args]
+                    # Calculate complexity (simplified cyclomatic complexity)
+                    complexity = 1  # Base complexity
+                    for child in ast.walk(node):
+                        if isinstance(child, (ast.If, ast.For, ast.While, ast.With)):
+                            complexity += 1
+                    # Attempt to infer return type (simplified)
+                    returns = "None"
+                    for child in ast.walk(node):
+                        if isinstance(child, ast.Return):
+                            if child.value is None:
+                                returns = "None"
+                            elif isinstance(child.value, ast.Constant):
+                                if isinstance(child.value.value, (int, float)):
+                                    returns = "int" if isinstance(child.value.value, int) else "float"
+                                elif isinstance(child.value.value, str):
+                                    returns = "str"
+                                elif isinstance(child.value.value, bool):
+                                    returns = "bool"
+                            break
+                    functions[node.name] = FunctionInfo(
+                        loc=self._count_lines(node),
+                        docstring=ast.get_docstring(node),
+                        params=params,
+                        complexity=complexity,
+                        returns=returns
+                    )
+                elif isinstance(node, ast.ClassDef):
+                    methods = {}
+                    for child in node.body:
+                        if isinstance(child, ast.FunctionDef):
+                            methods[child.name] = MethodInfo(
+                                loc=self._count_lines(child),
+                                docstring=ast.get_docstring(child)
+                            )
+                    classes[node.name] = ClassInfo(
+                        methods=methods,
+                        docstring=ast.get_docstring(node)
+                    )
+
+            return FileInfo(
                 file_path=self.file_path,
-                attributes=attributes,
-                complexity=complexity
+                type=self.get_file_type(),
+                size=self.file_path.stat().st_size,
+                functions=functions,
+                classes=classes,
+                dependencies=self.dependencies,
+                unused_imports=unused_imports
+            )
+        except (SyntaxError, FileNotFoundError):
+            return FileInfo(
+                file_path=self.file_path,
+                type=self.get_file_type(),
+                size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
+                functions={},
+                classes={},
+                dependencies=self.dependencies
             )
 
-            self.classes[node.name] = class_info
-            return class_info
-        except Exception as e:
-            print(f"Error processing class {node.name}: {str(e)}")
+    def _read_file(self) -> Optional[str]:
+        """Read the file content safely.
+
+        Returns:
+            Optional[str]: File content, or None if reading fails.
+        """
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except (IOError, UnicodeDecodeError):
             return None
 
-    def _get_code_snippet(self, node: ast.AST) -> CodeSnippet:
-        """Extract the actual code for a node."""
-        if not self.content:
-            return CodeSnippet("", 0, 0)
+    def _count_lines(self, node: ast.AST) -> int:
+        """Count the number of lines in an AST node.
 
-        start_line = node.lineno - 1
-        end_line = node.end_lineno
-        lines = self.content.split('\n')
-        code_lines = lines[start_line:end_line]
-        return CodeSnippet(
-            content='\n'.join(code_lines),
-            start_line=start_line + 1,
-            end_line=end_line
-        )
+        Args:
+            node: AST node to analyze.
 
-    def _get_return_type(self, node: ast.FunctionDef) -> str:
-        """Extract return type annotation if present."""
-        if node.returns:
-            return ast.unparse(node.returns)
-        return ""
-
-    def _get_dependencies(self, node: ast.AST) -> Set[str]:
-        """Extract dependencies from a node."""
-        deps = set()
-        for child in ast.walk(node):
-            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
-                deps.add(child.id)
-        return deps - self.imports  # Exclude imports themselves
-
-    def _process_import(self, node: ast.Import):
-        """Process import statements."""
-        for name in node.names:
-            self.imports.add(name.name)
-            self.dependencies.add(name.name)
-
-    def _process_import_from(self, node: ast.ImportFrom):
-        """Process from ... import statements."""
-        module = node.module or ""
-        for name in node.names:
-            import_name = f"{module}.{name.name}"
-            self.imports.add(import_name)
-            self.dependencies.add(import_name)
-
-    def get_external_dependencies(self) -> Set[str]:
-        """Extract external dependencies (excluding standard library)."""
-        stdlib_modules = set(sys.stdlib_module_names)
-        return {dep.split('.')[0] for dep in self.dependencies 
-                if dep.split('.')[0] not in stdlib_modules}
+        Returns:
+            int: Number of lines in the node.
+        """
+        if hasattr(node, 'end_lineno') and hasattr(node, 'lineno'):
+            return node.end_lineno - node.lineno + 1
+        return 0

@@ -38,24 +38,15 @@ class ClassInfo:
 
 @dataclass
 class FileInfo:
-    """Stores information about a file, including functions and classes."""
-    file_path: Path = None
-    type: str = "unknown"
-    size: float = 0.0
-    functions: Dict[str, FunctionInfo] = None
-    classes: Dict[str, ClassInfo] = None
-    dependencies: Set[str] = None
-    unused_imports: Set[str] = None
-
-    def __post_init__(self):
-        if self.functions is None:
-            self.functions = {}
-        if self.classes is None:
-            self.classes = {}
-        if self.dependencies is None:
-            self.dependencies = set()
-        if self.unused_imports is None:
-            self.unused_imports = set()
+    file_path: Path
+    type: str
+    size: int
+    lines: int
+    functions: Dict[str, "FunctionInfo"]
+    classes: Dict[str, "ClassInfo"]
+    dependencies: Set[str]
+    unused_imports: Optional[Set[str]] = None
+    skipped: bool = False
 
 @dataclass
 class ProjectMetrics:

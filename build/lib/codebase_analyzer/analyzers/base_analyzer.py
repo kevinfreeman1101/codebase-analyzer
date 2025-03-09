@@ -1,30 +1,36 @@
+"""Base class for file analyzers."""
+
 from abc import ABC, abstractmethod
-from typing import Dict, Set, Optional
+from pathlib import Path
+from typing import Optional
+
 from ..models.data_classes import FileInfo
 
 class BaseAnalyzer(ABC):
-    """Base class for file analyzers."""
+    """Abstract base class for file analyzers."""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: Path) -> None:
+        """Initialize the analyzer with a file path.
+
+        Args:
+            file_path: Path to the file to analyze.
+        """
         self.file_path = file_path
-        self.dependencies: Set[str] = set()
 
     @abstractmethod
     def analyze(self) -> Optional[FileInfo]:
-        """
-        Analyze the file and return FileInfo object.
+        """Analyze the file and return structured information.
 
         Returns:
-            FileInfo object or None if analysis fails
+            Optional[FileInfo]: File information if successful, None otherwise.
         """
         pass
 
     @abstractmethod
     def get_file_type(self) -> str:
-        """
-        Get the type of file this analyzer handles.
+        """Return the type of file being analyzed.
 
         Returns:
-            String representing the file type
+            str: The file type (e.g., 'python', 'json', etc.).
         """
         pass

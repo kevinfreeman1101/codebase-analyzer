@@ -21,11 +21,11 @@ class ArchitecturalStyle:
 
 @dataclass
 class PatternMetrics:
-    design_patterns: List[DesignPattern]
-    architectural_style: ArchitecturalStyle
-    api_patterns: Dict[str, float]
-    database_patterns: Dict[str, float]
-    anti_patterns: List[Dict[str, str]]
+    patterns: List[str]
+    architectural_style: Optional[str] = None
+    api_patterns: Optional[List[str]] = None
+    database_patterns: Optional[List[str]] = None
+    anti_patterns: Optional[List[str]] = None
 
 class PatternAnalyzer:
     """Analyzes code patterns and architectural styles."""
@@ -43,10 +43,11 @@ class PatternAnalyzer:
         self._detect_api_patterns(project_root)
         self._detect_database_patterns(project_root)
         self._detect_anti_patterns(project_root)
+        arch_style = self._determine_architecture_style()
 
         return PatternMetrics(
-            design_patterns=self.patterns,
-            architectural_style=self._determine_architecture_style(),
+            patterns=[pattern.name for pattern in self.patterns],
+            architectural_style=arch_style.name if arch_style else None,
             api_patterns=self.api_patterns,
             database_patterns=self.db_patterns,
             anti_patterns=self.anti_patterns

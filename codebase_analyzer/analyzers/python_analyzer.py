@@ -33,20 +33,25 @@ class PythonAnalyzer(BaseAnalyzer):
                 file_path=self.file_path,
                 type=self.get_file_type(),
                 size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
+                lines=0,
                 functions={},
                 classes={},
-                dependencies=self.dependencies
+                dependencies=self.dependencies,
+                skipped=True
             )
 
         try:
+            lines = len(source.splitlines())
             if not source.strip():  # Empty file
                 return FileInfo(
                     file_path=self.file_path,
                     type=self.get_file_type(),
                     size=self.file_path.stat().st_size,
+                    lines=lines,
                     functions={},
                     classes={},
-                    dependencies=self.dependencies
+                    dependencies=self.dependencies,
+                    skipped=False
                 )
 
             tree = ast.parse(source)
@@ -76,42 +81,25 @@ class PythonAnalyzer(BaseAnalyzer):
                             else:
                                 alias_names[name.name] = name.name
                 elif isinstance(node, ast.Name):
-                    # Direct name usage (e.g., 'os' in 'os.path')
                     used_names.add(node.id)
                 elif isinstance(node, ast.Attribute):
-                    # Attribute access (e.g., 'os' in 'os.path.join')
                     current = node
                     while isinstance(current, ast.Attribute):
                         current = current.value
                     if isinstance(current, ast.Name):
                         used_names.add(current.id)
 
-            # Update self.dependencies with all imported modules
             self.dependencies.update(imported_names)
-
-            # Determine unused imports
-            unused_imports = set()
-            for name in imported_names:
-                # Check if the module or its alias is used
-                is_used = False
-                for used_name in used_names:
-                    if used_name in alias_names and alias_names[used_name] == name:
-                        is_used = True
-                        break
-                if not is_used:
-                    unused_imports.add(name)
+            unused_imports = {name for name in imported_names if not any(used_name in alias_names and alias_names[used_name] == name for used_name in used_names)}
 
             # Second pass: Analyze functions and classes
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
-                    # Extract parameters
                     params = [arg.arg for arg in node.args.args]
-                    # Calculate complexity (simplified cyclomatic complexity)
-                    complexity = 1  # Base complexity
+                    complexity = 1
                     for child in ast.walk(node):
                         if isinstance(child, (ast.If, ast.For, ast.While, ast.With)):
                             complexity += 1
-                    # Attempt to infer return type (simplified)
                     returns = "None"
                     for child in ast.walk(node):
                         if isinstance(child, ast.Return):
@@ -149,19 +137,23 @@ class PythonAnalyzer(BaseAnalyzer):
                 file_path=self.file_path,
                 type=self.get_file_type(),
                 size=self.file_path.stat().st_size,
+                lines=lines,
                 functions=functions,
                 classes=classes,
                 dependencies=self.dependencies,
-                unused_imports=unused_imports
+                unused_imports=unused_imports,
+                skipped=False
             )
         except (SyntaxError, FileNotFoundError):
             return FileInfo(
                 file_path=self.file_path,
                 type=self.get_file_type(),
                 size=0 if not self.file_path.exists() else self.file_path.stat().st_size,
+                lines=0,
                 functions={},
                 classes={},
-                dependencies=self.dependencies
+                dependencies=self.dependencies,
+                skipped=True
             )
 
     def _read_file(self) -> Optional[str]:

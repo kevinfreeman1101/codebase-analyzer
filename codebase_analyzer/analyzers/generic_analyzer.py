@@ -29,13 +29,24 @@ class GenericAnalyzer(BaseAnalyzer):
         """
         content = safe_read_file(self.file_path)
         if content is None:
-            return None
+            return FileInfo(
+                file_path=self.file_path,
+                type=self.get_file_type(),
+                size=0,
+                lines=0,
+                functions={},
+                classes={},
+                dependencies=set(),
+                skipped=True
+            )
 
         return FileInfo(
             file_path=self.file_path,
             type=self.get_file_type(),
             size=len(content.encode('utf-8')),
-            functions={},  # Empty dict for non-Python files
-            classes={},    # Empty dict for non-Python files
-            dependencies=set()  # No dependencies in non-Python files
+            lines=len(content.splitlines()),
+            functions={},
+            classes={},
+            dependencies=set(),
+            skipped=False
         )

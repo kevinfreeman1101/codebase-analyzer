@@ -1,17 +1,17 @@
 Codebase Analysis Summary
 =========================
 Project Path: .
-Analysis Timestamp: 2025-03-08 00:54:05.621733
-Total Files: 99
-Total Lines: 12821
+Analysis Timestamp: 2025-03-08 18:37:58.927504
+Total Files: 100
+Total Lines: 12947
 
 Complexity Metrics
-  Cyclomatic Complexity: 1219
-  Maintainability Index: 68.6
+  Cyclomatic Complexity: 1256
+  Maintainability Index: 68.4
 
 Quality Metrics
-  Type Hint Coverage: 35.5%
-  Documentation Coverage: 40.5%
+  Type Hint Coverage: 35.1%
+  Documentation Coverage: 41.0%
 
 Dependency Metrics
   Direct Dependencies: 18

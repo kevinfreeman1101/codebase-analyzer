@@ -1,11 +1,11 @@
 # codebase_analyzer/features/performance.py
+from .complexity import ComplexityVisitor
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
 import ast
 import re
 from dataclasses import dataclass
 from collections import defaultdict
-
 from .base import FeatureExtractor
 
 @dataclass
