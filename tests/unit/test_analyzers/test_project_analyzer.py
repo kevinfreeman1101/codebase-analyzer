@@ -19,8 +19,8 @@ def analyzer(tmp_path, mocker):
 def test_project_analyzer_empty_directory(analyzer):
     """Test analyzing an empty project directory."""
     result = analyzer.analyze()
-    assert isinstance(result, str)
-    assert "File Distribution:\n" in result
+    assert "summary" in result
+    assert "File Distribution:\n" in result["summary"]
 
 def test_project_analyzer_with_files(analyzer):
     """Test analyzing a project with simple files."""
@@ -31,8 +31,8 @@ def test_project_analyzer_with_files(analyzer):
     for fname, content in files.items():
         (analyzer.root_path / fname).write_text(content)
     result = analyzer.analyze()
-    assert "File Distribution:\n- Python Files: 2 files" in result
-    assert "Total Files: 2" in result
+    assert "File Distribution:\n- Python Files: 2 files" in result["summary"]
+    assert "Total Files: 2" in result["summary"]
 
 def test_project_analyzer_with_complex_structure(analyzer):
     """Test analyzing a project with nested structure."""
@@ -46,8 +46,8 @@ def test_project_analyzer_with_complex_structure(analyzer):
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(content)
     result = analyzer.analyze()
-    assert "File Distribution:\n- Python Files: 3 files" in result
-    assert "Total Files: 3" in result
+    assert "File Distribution:\n- Python Files: 3 files" in result["summary"]
+    assert "Total Files: 3" in result["summary"]
 
 def test_project_analyzer_with_non_python_files(analyzer):
     """Test analyzing a project with non-Python files."""
@@ -59,13 +59,13 @@ def test_project_analyzer_with_non_python_files(analyzer):
     for fname, content in files.items():
         (analyzer.root_path / fname).write_text(content)
     result = analyzer.analyze()
-    assert "File Distribution:\n- Python Files: 1 files" in result
-    assert "Total Files: 3" in result
+    assert "File Distribution:\n- Python Files: 1 files" in result["summary"]
+    assert "Total Files: 3" in result["summary"]
 
 def test_analyze_empty_project(analyzer):
     """Test analyzing an empty project (redundant but kept)."""
     result = analyzer.analyze()
-    assert "File Distribution:\n" in result
+    assert "File Distribution:\n" in result["summary"]
 
 def test_analyze_simple_project(analyzer):
     """Test analyzing a simple project."""
@@ -73,5 +73,5 @@ def test_analyze_simple_project(analyzer):
     for fname, content in files.items():
         (analyzer.root_path / fname).write_text(content)
     result = analyzer.analyze()
-    assert "File Distribution:\n- Python Files: 1 files" in result
-    assert "Total Files: 1" in result
+    assert "File Distribution:\n- Python Files: 1 files" in result["summary"]
+    assert "Total Files: 1" in result["summary"]

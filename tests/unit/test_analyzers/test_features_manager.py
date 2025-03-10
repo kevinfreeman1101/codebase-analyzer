@@ -108,7 +108,8 @@ def test_export_results_html(manager):
         'results': {'complexity': {'complexity_score': 0.8}},
         'recommendations': [{'priority': 'high', 'title': 'Test', 'description': 'Desc', 'suggestion': 'Fix', 'category': 'complexity'}]
     }
-    output = manager.export_results(results, 'html')
+    results["metadata"]["file_path"] = "test_path"
+    output = manager.export_results(results, "html")
     assert '<title>Code Analysis Report</title>' in output
     assert '0.80' in output
     assert 'Test' in output
@@ -119,8 +120,9 @@ def test_export_results_invalid_format(manager):
         manager.export_results({}, 'invalid')
 
 def test_export_results_to_file(manager, tmp_path):
+    import json
     """Test export to file."""
     results = {'overall_score': 0.8}
     file_path = tmp_path / "output.json"
     manager.export_results(results, 'json', file_path)
-    assert file_path.read_text() == '{"overall_score": 0.8}'
+    assert file_path.read_text() == json.dumps({"overall_score": 0.8}, indent=2)

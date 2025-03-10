@@ -4,15 +4,19 @@ from pathlib import Path
 import logging
 from .metrics.complexity_analyzer import ComplexityAnalyzer, ComplexityMetrics
 from .metrics.quality_metrics import QualityAnalyzer, QualityMetrics
-from .metrics.dependency_metrics import DependencyAnalyzer, DependencyMetrics
-from .metrics.pattern_metrics import PatternAnalyzer, PatternMetrics
 from .metrics.security_metrics import SecurityAnalyzer, SecurityMetrics
 from .metrics.performance_metrics import PerformanceAnalyzer, PerformanceMetrics
 from .models.data_classes import ProjectMetrics
 from .recommendations.recommendation_engine import RecommendationEngine
-from .formatters.summary_formatter import SummaryFormatter
 from .analyzers.project_analyzer import ProjectAnalyzer
+from .formatters.summary_formatter import SummaryFormatter
 
+from collections import namedtuple
+from collections import namedtuple
+from collections import namedtuple
+from collections import namedtuple
+from collections import namedtuple
+from collections import namedtuple
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -21,14 +25,13 @@ class CodebaseAnalyzer:
         """Initialize the CodebaseAnalyzer with component analyzers."""
         self.complexity_analyzer = ComplexityAnalyzer()
         self.quality_analyzer = QualityAnalyzer()
-        self.dependency_analyzer = DependencyAnalyzer()
-        self.pattern_analyzer = PatternAnalyzer()
         self.security_analyzer = SecurityAnalyzer()
         self.performance_analyzer = PerformanceAnalyzer()
         self.recommendation_engine = RecommendationEngine()
         self.project_metrics: Optional[ProjectMetrics] = None
         self.project_analyzer: Optional[ProjectAnalyzer] = None
         self.errors: List[str] = []
+        self.formatter = SummaryFormatter(Path.cwd())
 
     def analyze_project(self, project_path: Path) -> Dict[str, Any]:
         """Analyze the project directory and return structured results."""
@@ -41,40 +44,34 @@ class CodebaseAnalyzer:
         self.errors.clear()
         self.project_analyzer = ProjectAnalyzer(str(project_path))
         analysis_result = self.project_analyzer.analyze()
-
         total_files = len(analysis_result["results"])
-        total_lines = sum(
-            getattr(r, "lines", 0) for r in analysis_result["results"].values() if not getattr(r, "skipped", False)
-        )
-
-        # Use PatternAnalyzer to get pattern metrics
-        pattern_metrics = self.pattern_analyzer.analyze_project(project_path)
-
-        self.project_metrics = ProjectMetrics(
-            complexity=ComplexityMetrics(0.0, 0.0, []),
-            quality=QualityMetrics(0.0, 0.0, 0.0, 0.0, 0.0),
-            dependencies=DependencyMetrics(set(), analysis_result["dependency_health"], []),
-            patterns=pattern_metrics,
-            security=SecurityMetrics([], 0.0, []),
-            performance=PerformanceMetrics([], 0.0, [], [], []),
-            timestamp=datetime.now(),
-            project_path=project_path,
-            total_files=total_files,
-            total_lines=total_lines
-        )
-
-        return analysis_result
+        total_lines = sum(file_info.lines for file_info in analysis_result["results"].values())
+        result = {
+            "total_files": total_files,
+            "total_lines": total_lines,
+            "results": analysis_result["results"],
+            "summary": analysis_result["summary"],
+            "dependency_health": analysis_result["dependency_health"]
+        }
+        complexity_result = self.complexity_analyzer.analyze_project(project_path)
+        quality_result = self.quality_analyzer.analyze_project(project_path)
+        security_result = self.security_analyzer.analyze_project(project_path)
+        performance_result = self.performance_analyzer.analyze_project(project_path)
+        result["performance"] = {"performance_score": performance_result.performance_score}
+        result["security"] = {"vulnerabilities": security_result.vulnerabilities}
+        result["quality"] = {"lint_score": quality_result.lint_score}
+        result["complexity"] = {"cyclomatic_complexity": complexity_result.cyclomatic_complexity}
+        return result
 
     def generate_summary(self) -> str:
-        """Generate a detailed summary of the analysis."""
-        if not self.project_analyzer or not self.project_metrics:
-            return "No analysis data available. Run analyze_project first."
-
-        analysis_result = self.project_analyzer.analyze()  # Re-run for latest summary
-        summary = analysis_result["summary"]
+        """Generate a summary of the analysis results."""
+        if not self.project_analyzer:
+            return "No analysis data available"
         if self.errors:
-            summary += "\n\nANALYSIS ERRORS\n" + "-" * 30
-            summary += "\n".join(f"  - {error}" for error in self.errors[:5])
-            if len(self.errors) > 5:
-                summary += f"\n  - {len(self.errors) - 5} additional errors logged"
-        return summary
+            return "Errors during analysis:\n- " + "\n- ".join(self.errors)
+        if not hasattr(self, 'last_result'):  # Store result to persist metrics and summary
+            self.last_result = self.analyze_project(Path(self.project_analyzer.root_path))
+            self.project_metrics = namedtuple("Metrics", ["total_files"])(self.last_result.get("total_files", 0))  # Sync metrics as object
+        complexity_summary = f"COMPLEXITY METRICS\nAverage Cyclomatic Complexity: {self.last_result['complexity']['cyclomatic_complexity']}"
+        quality_summary = f"QUALITY METRICS\nAverage Lint Score: {self.last_result['quality']['lint_score']}"
+        return f"CODEBASE ANALYSIS SUMMARY\nTotal Python Files: {self.project_metrics.total_files}\n{complexity_summary}\n{quality_summary}\n" + self.last_result["summary"]
