@@ -1,0 +1,17 @@
+--- complexity.py
++++ complexity.py
+@@ -18,8 +18,12 @@
+     def extract(self, file_path):
+         logging.info("Extracting complexity for: %s (type: %s)", file_path, type(file_path))
+         try:
+             if isinstance(file_path, Path):
+                 file_path = str(file_path)
+-            with open(file_path, "r", encoding="utf-8") as file:
+-                code = file.read()
++            if isinstance(file_path, str) and '\n' in file_path or not os.path.exists(file_path):
++                # Input is a code string
++                code = file_path
++            else:
++                with open(file_path, "r", encoding="utf-8") as file:
++                    code = file.read()
+             tree = ast.parse(code)

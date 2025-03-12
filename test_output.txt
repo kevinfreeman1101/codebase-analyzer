@@ -1,0 +1,251 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.11, pytest-8.3.4, pluggy-1.5.0 -- /home/althor/anaconda3/envs/codebase_analyzer/bin/python3.11
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /mnt/Egg/code/python/apps/codebase-analyzer
+configfile: pyproject.toml
+plugins: mock-3.14.0, cov-6.0.0, benchmark-5.1.0
+collecting ... collected 44 items
+
+tests/integration/test_integration.py::TestIntegration::test_full_analysis FAILED [  2%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_simple PASSED [  4%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_with_complexity PASSED [  6%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_with_vulnerabilities PASSED [  9%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_empty PASSED [ 11%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_generate_summary_no_analysis PASSED [ 13%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_generate_summary_after_analysis PASSED [ 15%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_invalid_path PASSED [ 18%]
+tests/unit/test_analyzers/test_codebase_analyzer.py::test_analyze_project_with_errors PASSED [ 20%]
+tests/unit/test_analyzers/test_dependency_metrics.py::test_basic_dependencies PASSED [ 22%]
+tests/unit/test_analyzers/test_dependency_metrics.py::test_vulnerable_dependencies PASSED [ 25%]
+tests/unit/test_analyzers/test_features_manager.py::test_init PASSED     [ 27%]
+tests/unit/test_analyzers/test_features_manager.py::test_extract_all_success PASSED [ 29%]
+tests/unit/test_analyzers/test_features_manager.py::test_extract_all_with_errors PASSED [ 31%]
+tests/unit/test_analyzers/test_features_manager.py::test_calculate_overall_score PASSED [ 34%]
+tests/unit/test_analyzers/test_features_manager.py::test_generate_summary PASSED [ 36%]
+tests/unit/test_analyzers/test_features_manager.py::test_generate_recommendations PASSED [ 38%]
+tests/unit/test_analyzers/test_features_manager.py::test_export_results_json PASSED [ 40%]
+tests/unit/test_analyzers/test_features_manager.py::test_export_results_html PASSED [ 43%]
+tests/unit/test_analyzers/test_features_manager.py::test_export_results_invalid_format PASSED [ 45%]
+tests/unit/test_analyzers/test_features_manager.py::test_export_results_to_file PASSED [ 47%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_project_analyzer_empty_directory PASSED [ 50%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_project_analyzer_with_files PASSED [ 52%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_project_analyzer_with_complex_structure PASSED [ 54%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_project_analyzer_with_non_python_files PASSED [ 56%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_analyze_empty_project PASSED [ 59%]
+tests/unit/test_analyzers/test_project_analyzer.py::test_analyze_simple_project PASSED [ 61%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_analyze_empty_file PASSED [ 63%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_analyze_simple_function PASSED [ 65%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_analyze_complex_function PASSED [ 68%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_analyze_dependencies PASSED [ 70%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_basic_analysis PASSED [ 72%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_unused_imports PASSED [ 75%]
+tests/unit/test_analyzers/test_python_analyzer.py::test_malformed_file PASSED [ 77%]
+tests/unit/test_analyzers/test_quality_metrics.py::test_empty_file PASSED [ 79%]
+tests/unit/test_analyzers/test_quality_metrics.py::test_simple_function_with_test PASSED [ 81%]
+tests/unit/test_analyzers/test_quality_metrics.py::test_project_with_tests PASSED [ 84%]
+tests/unit/test_analyzers/test_quality_metrics.py::test_mixed_functions PASSED [ 86%]
+tests/unit/test_analyzers/test_quality_metrics.py::test_project_with_no_tests PASSED [ 88%]
+tests/unit/test_features/test_complexity_features.py::TestComplexityFeatures::test_complexity_basic_function PASSED [ 90%]
+tests/unit/test_features/test_complexity_features.py::TestComplexityFeatures::test_complexity_nested_structures PASSED [ 93%]
+tests/unit/test_features/test_complexity_features.py::TestComplexityFeatures::test_maintainability_index[def f(): return 1-100.0] PASSED [ 95%]
+tests/unit/test_features/test_complexity_features.py::TestComplexityFeatures::test_maintainability_index[def f(x):\n if x: return 1\n return 0-80.0] PASSED [ 97%]
+tests/unit/test_features/test_complexity_features.py::TestComplexityFeatures::test_maintainability_index[def f(x):\n for i in range(x):\n  if i>0:\n   return i-60.0] PASSED [100%]
+
+=================================== FAILURES ===================================
+______________________ TestIntegration.test_full_analysis ______________________
+
+self = <tests.integration.test_integration.TestIntegration object at 0x7f776df9c810>
+tmp_path = PosixPath('/tmp/pytest-of-althor/pytest-8/test_full_analysis0')
+
+        def test_full_analysis(self, tmp_path):
+            """Test full analysis on a sample project."""
+            # Create a sample project structure
+            project_dir = tmp_path / "sample_project"
+            project_dir.mkdir()
+            (project_dir / "main.py").write_text("""
+    def main():
+        if True:
+            print('Hello, world!')
+        return None
+    """)
+            (project_dir / "utils.py").write_text("""
+    import os
+    
+    def helper():
+        os.system('echo test')
+    """)
+            (project_dir / "README.md").write_text("# Sample Project")
+    
+            # Run analysis
+            result = self.analyzer.analyze_project(project_dir)
+            summary = self.analyzer.generate_summary()
+    
+            # Assertions
+>           assert result.total_files == 2  # Only .py files counted
+E           AttributeError: 'dict' object has no attribute 'total_files'
+
+tests/integration/test_integration.py:33: AttributeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-11 22:50:44,243 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Cache file path: /mnt/Egg/code/python/apps/codebase-analyzer/.dependency_cache.json
+2025-03-11 22:50:44,244 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Analyzing project at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project
+2025-03-11 22:50:44,246 - codebase_analyzer.analyzers.project_analyzer - DEBUG - File analysis loop took 0.00 seconds
+2025-03-11 22:50:44,246 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Checking for requirements.txt at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project/requirements.txt
+2025-03-11 22:50:44,246 - codebase_analyzer.analyzers.project_analyzer - DEBUG - No requirements.txt found
+2025-03-11 22:50:44,248 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Running safety check
+2025-03-11 22:50:52,625 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Safety check result: Safety check failed
+2025-03-11 22:50:52,625 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Running pip list --outdated
+2025-03-11 22:51:06,143 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Pip outdated result: Package       Version Latest  Type
+------------- ------- ------- -----
+bandit        1.8.0   1.8.3   wheel
+black         24.10.0 25.1.0  wheel
+coverage      7.6.10  7.6.12  wheel
+filelock      3.16.1  3.17.0  wheel
+flake8        7.1.1   7.1.2   wheel
+fonttools     4.55.3  4.56.0  wheel
+Jinja2        3.1.5   3.1.6   wheel
+lizard        1.17.13 1.17.20 wheel
+mando         0.7.1   0.8.2   wheel
+matplotlib    3.10.0  3.10.1  wheel
+mypy          1.14.1  1.15.0  wheel
+numpy         2.2.1   2.2.3   wheel
+pbr           6.1.0   6.1.1   wheel
+pip           24.3.1  25.0.1  wheel
+psutil        6.1.1   7.0.0   wheel
+pydantic      2.9.2   2.10.6  wheel
+pydantic_core 2.23.4  2.31.1  wheel
+pytest        8.3.4   8.3.5   wheel
+pytz          2024.2  2025.1  wheel
+scikit-learn  1.6.0   1.6.1   wheel
+scipy         1.15.0  1.15.2  wheel
+setuptools    75.6.0  76.0.0  wheel
+stevedore     5.4.0   5.4.1   wheel
+tzdata        2024.2  2025.1  wheel
+
+2025-03-11 22:51:06,143 - codebase_analyzer.analyzers.project_analyzer - DEBUG - _check_dependency_health took 21.90 seconds
+2025-03-11 22:51:06,143 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Dependency health check took 21.90 seconds
+2025-03-11 22:51:06,143 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Total analyze method took 21.90 seconds
+2025-03-11 22:51:06,145 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Cache file path: /mnt/Egg/code/python/apps/codebase-analyzer/.dependency_cache.json
+2025-03-11 22:51:06,145 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Analyzing project at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project
+2025-03-11 22:51:06,146 - codebase_analyzer.analyzers.project_analyzer - DEBUG - File analysis loop took 0.00 seconds
+2025-03-11 22:51:06,146 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Checking for requirements.txt at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project/requirements.txt
+2025-03-11 22:51:06,146 - codebase_analyzer.analyzers.project_analyzer - DEBUG - No requirements.txt found
+2025-03-11 22:51:06,148 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Running safety check
+2025-03-11 22:51:16,128 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Safety check result: Safety check failed
+2025-03-11 22:51:16,128 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Running pip list --outdated
+2025-03-11 22:51:29,435 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Pip outdated result: Package       Version Latest  Type
+------------- ------- ------- -----
+bandit        1.8.0   1.8.3   wheel
+black         24.10.0 25.1.0  wheel
+coverage      7.6.10  7.6.12  wheel
+filelock      3.16.1  3.17.0  wheel
+flake8        7.1.1   7.1.2   wheel
+fonttools     4.55.3  4.56.0  wheel
+Jinja2        3.1.5   3.1.6   wheel
+lizard        1.17.13 1.17.20 wheel
+mando         0.7.1   0.8.2   wheel
+matplotlib    3.10.0  3.10.1  wheel
+mypy          1.14.1  1.15.0  wheel
+numpy         2.2.1   2.2.3   wheel
+pbr           6.1.0   6.1.1   wheel
+pip           24.3.1  25.0.1  wheel
+psutil        6.1.1   7.0.0   wheel
+pydantic      2.9.2   2.10.6  wheel
+pydantic_core 2.23.4  2.31.1  wheel
+pytest        8.3.4   8.3.5   wheel
+pytz          2024.2  2025.1  wheel
+scikit-learn  1.6.0   1.6.1   wheel
+scipy         1.15.0  1.15.2  wheel
+setuptools    75.6.0  76.0.0  wheel
+stevedore     5.4.0   5.4.1   wheel
+tzdata        2024.2  2025.1  wheel
+
+2025-03-11 22:51:29,435 - codebase_analyzer.analyzers.project_analyzer - DEBUG - _check_dependency_health took 23.29 seconds
+2025-03-11 22:51:29,435 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Dependency health check took 23.29 seconds
+2025-03-11 22:51:29,435 - codebase_analyzer.analyzers.project_analyzer - DEBUG - Total analyze method took 23.29 seconds
+------------------------------ Captured log call -------------------------------
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:37 Cache file path: /mnt/Egg/code/python/apps/codebase-analyzer/.dependency_cache.json
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:165 Analyzing project at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:192 File analysis loop took 0.00 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:43 Checking for requirements.txt at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project/requirements.txt
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:45 No requirements.txt found
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:118 Running safety check
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:131 Safety check result: Safety check failed
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:136 Running pip list --outdated
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:149 Pip outdated result: Package       Version Latest  Type
+------------- ------- ------- -----
+bandit        1.8.0   1.8.3   wheel
+black         24.10.0 25.1.0  wheel
+coverage      7.6.10  7.6.12  wheel
+filelock      3.16.1  3.17.0  wheel
+flake8        7.1.1   7.1.2   wheel
+fonttools     4.55.3  4.56.0  wheel
+Jinja2        3.1.5   3.1.6   wheel
+lizard        1.17.13 1.17.20 wheel
+mando         0.7.1   0.8.2   wheel
+matplotlib    3.10.0  3.10.1  wheel
+mypy          1.14.1  1.15.0  wheel
+numpy         2.2.1   2.2.3   wheel
+pbr           6.1.0   6.1.1   wheel
+pip           24.3.1  25.0.1  wheel
+psutil        6.1.1   7.0.0   wheel
+pydantic      2.9.2   2.10.6  wheel
+pydantic_core 2.23.4  2.31.1  wheel
+pytest        8.3.4   8.3.5   wheel
+pytz          2024.2  2025.1  wheel
+scikit-learn  1.6.0   1.6.1   wheel
+scipy         1.15.0  1.15.2  wheel
+setuptools    75.6.0  76.0.0  wheel
+stevedore     5.4.0   5.4.1   wheel
+tzdata        2024.2  2025.1  wheel
+
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:155 _check_dependency_health took 21.90 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:198 Dependency health check took 21.90 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:200 Total analyze method took 21.90 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:37 Cache file path: /mnt/Egg/code/python/apps/codebase-analyzer/.dependency_cache.json
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:165 Analyzing project at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:192 File analysis loop took 0.00 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:43 Checking for requirements.txt at: /tmp/pytest-of-althor/pytest-8/test_full_analysis0/sample_project/requirements.txt
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:45 No requirements.txt found
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:118 Running safety check
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:131 Safety check result: Safety check failed
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:136 Running pip list --outdated
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:149 Pip outdated result: Package       Version Latest  Type
+------------- ------- ------- -----
+bandit        1.8.0   1.8.3   wheel
+black         24.10.0 25.1.0  wheel
+coverage      7.6.10  7.6.12  wheel
+filelock      3.16.1  3.17.0  wheel
+flake8        7.1.1   7.1.2   wheel
+fonttools     4.55.3  4.56.0  wheel
+Jinja2        3.1.5   3.1.6   wheel
+lizard        1.17.13 1.17.20 wheel
+mando         0.7.1   0.8.2   wheel
+matplotlib    3.10.0  3.10.1  wheel
+mypy          1.14.1  1.15.0  wheel
+numpy         2.2.1   2.2.3   wheel
+pbr           6.1.0   6.1.1   wheel
+pip           24.3.1  25.0.1  wheel
+psutil        6.1.1   7.0.0   wheel
+pydantic      2.9.2   2.10.6  wheel
+pydantic_core 2.23.4  2.31.1  wheel
+pytest        8.3.4   8.3.5   wheel
+pytz          2024.2  2025.1  wheel
+scikit-learn  1.6.0   1.6.1   wheel
+scipy         1.15.0  1.15.2  wheel
+setuptools    75.6.0  76.0.0  wheel
+stevedore     5.4.0   5.4.1   wheel
+tzdata        2024.2  2025.1  wheel
+
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:155 _check_dependency_health took 23.29 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:198 Dependency health check took 23.29 seconds
+DEBUG    codebase_analyzer.analyzers.project_analyzer:project_analyzer.py:200 Total analyze method took 23.29 seconds
+=============================== warnings summary ===============================
+codebase_analyzer/features/performance.py:38
+  /mnt/Egg/code/python/apps/codebase-analyzer/codebase_analyzer/features/performance.py:38: DeprecationWarning: invalid escape sequence '\w'
+    r'\s*\+\s*'.join(['\w+' for _ in range(3)]),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_integration.py::TestIntegration::test_full_analysis
+============= 1 failed, 43 passed, 1 warning in 210.02s (0:03:30) ==============
